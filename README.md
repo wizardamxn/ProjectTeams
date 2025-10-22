@@ -28,31 +28,31 @@ Right now, the app lets you:
 - 🔐 **Secure sharing** (planned) — role-based access control for docs
 
 
-
 ## 📂 How It's Organized
 
-projectteamsfinal/
-├── frontend/
-│ ├── src/
-│ │ ├── components/ # React components
-│ │ ├── hooks/ # Custom hooks
-│ │ ├── pages/ # Main pages
-│ │ ├── store/ # Redux state
-│ │ ├── utils/ # Helper functions
-│ │ ├── App.tsx
-│ │ └── main.tsx
-│ ├── public/
-│ ├── package.json
-│ └── vite.config.ts
-│
-└── backend/
-├── database/ # Schemas & migrations
-├── middlewares/ # Auth, validation, etc.
-├── models/ # Mongoose models
-├── Routes/ # API endpoints
-├── utils/
-├── app.js
-└── package.json
+    projectteamsfinal/
+    ├── frontend/
+    │   ├── src/
+    │   │   ├── components/      # React components
+    │   │   ├── hooks/           # Custom hooks
+    │   │   ├── pages/           # Main pages
+    │   │   ├── store/           # Redux state
+    │   │   ├── utils/           # Helper functions
+    │   │   ├── App.tsx
+    │   │   └── main.tsx
+    │   ├── public/
+    │   ├── package.json
+    │   └── vite.config.ts
+    │
+    └── backend/
+        ├── database/            # Schemas & migrations
+        ├── middlewares/         # Auth, validation, etc.
+        ├── models/              # Mongoose models
+        ├── Routes/              # API endpoints
+        ├── utils/
+        ├── app.js
+        └── package.json
+
 
 ## 🚀 Getting Started
 
