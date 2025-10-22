@@ -1,5 +1,3 @@
----
-
 # 🧠 Project Teams
 
 > A real-time collaboration platform where teams can chat, share ideas, and co-edit documents — built with React, Node.js, and WebSockets.
@@ -145,5 +143,3 @@ MIT License — free for personal and commercial use.
 **Aman Ahmad**
 🌐 [Portfolio](https://amanahmad.vercel.app)
 🐙 [GitHub](https://github.com/wizardamxn)
-
----
