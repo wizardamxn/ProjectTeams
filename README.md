@@ -27,7 +27,7 @@ Right now, the app lets you:
 - 🎥 **Video rooms** (in the works) — peer-to-peer calls using WebRTC
 - 🔐 **Secure sharing** (planned) — role-based access control for docs
 
----
+
 
 ## 📂 How It's Organized
 
@@ -53,10 +53,6 @@ projectteamsfinal/
 ├── utils/
 ├── app.js
 └── package.json
-
-text
-
----
 
 ## 🚀 Getting Started
 
