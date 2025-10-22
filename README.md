@@ -1,119 +1,149 @@
+---
+
 # 🧠 Project Teams
 
-A real-time collaboration platform where teams can chat, share ideas, and work together seamlessly. Think of it as your own lightweight Notion meets Slack — built to help teams stay connected and productive.
+> A real-time collaboration platform where teams can chat, share ideas, and co-edit documents — built with React, Node.js, and WebSockets.
+> Think **Notion + Slack**, handcrafted for seamless teamwork.
 
-> 🚧 **Heads up:** This is still a work in progress! Core features are working, but I'm actively improving document syncing and ironing out some WebRTC quirks.
+---
+
+## ✨ Features
+
+* 💬 **Live Chat** — instant team messaging via Socket.IO
+* 📄 **Collaborative Editing** — co-editing documents with live updates
+* 🟢 **Presence Indicators** — see who’s online in real time
+* 🔄 **Version History** (coming soon)
+* 🎥 **Video Rooms** (in progress, WebRTC-based)
+* 🔐 **Secure Sharing** (planned, role-based access)
 
 ---
 
 ## 🛠️ Built With
 
-| **Frontend** | React, Redux, Tailwind CSS, Socket.IO Client |
-| **Backend** | Node.js, Express, Socket.IO, Mongoose |
-| **Database** | MongoDB |
-| **Real-time Magic** | WebSockets (Socket.IO), WebRTC |
-| **Dev Tools** | TypeScript, Vite, ESLint |
+| Layer                | Technologies                                             |
+| :------------------- | :------------------------------------------------------- |
+| **Frontend**         | React, Redux, Tailwind CSS, TypeScript, Socket.IO Client |
+| **Backend**          | Node.js, Express, Socket.IO, Mongoose                    |
+| **Database**         | MongoDB                                                  |
+| **Real-Time Engine** | WebSockets (Socket.IO), WebRTC                           |
+| **Dev Tools**        | Vite, ESLint, Vercel AI SDK                              |
 
 ---
 
-## ✨ What It Does
+## 📂 Project Structure
 
-Right now, the app lets you:
+```
+projectteamsfinal/
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── pages/
+│   │   ├── store/
+│   │   ├── utils/
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   ├── public/
+│   ├── package.json
+│   └── vite.config.ts
+│
+└── backend/
+    ├── database/
+    ├── middlewares/
+    ├── models/
+    ├── Routes/
+    ├── utils/
+    ├── app.js
+    └── package.json
+```
 
-- 💬 **Chat in real-time** — instant messaging across team rooms
-- 📄 **Edit documents together** — collaborative editing with live updates
-- 🟢 **See who's around** — presence indicators show who's online
-- 🔄 **Version history** (coming soon) — never lose track of changes
-- 🎥 **Video rooms** (in the works) — peer-to-peer calls using WebRTC
-- 🔐 **Secure sharing** (planned) — role-based access control for docs
+---
 
+## ⚙️ Setup & Installation
 
-## 📂 How It's Organized
+### 1️⃣ Clone the repository
 
-    projectteamsfinal/
-    ├── frontend/
-    │   ├── src/
-    │   │   ├── components/      # React components
-    │   │   ├── hooks/           # Custom hooks
-    │   │   ├── pages/           # Main pages
-    │   │   ├── store/           # Redux state
-    │   │   ├── utils/           # Helper functions
-    │   │   ├── App.tsx
-    │   │   └── main.tsx
-    │   ├── public/
-    │   ├── package.json
-    │   └── vite.config.ts
-    │
-    └── backend/
-        ├── database/            # Schemas & migrations
-        ├── middlewares/         # Auth, validation, etc.
-        ├── models/              # Mongoose models
-        ├── Routes/              # API endpoints
-        ├── utils/
-        ├── app.js
-        └── package.json
-
-
-## 🚀 Getting Started
-
-### Clone it
+```bash
 git clone https://github.com/wizardamxn/project-teams.git
 cd project-teams
-
-text
-
-### Install everything
-Backend
-cd backend
-npm install
-
-Frontend (in a new terminal)
-cd frontend
-npm install
-
-text
-
-### Set up your `.env` files
-Create `.env` in both `backend/` and `frontend/` with your MongoDB URI, API keys, etc.
-
-### Run it locally
-Start the backend
-cd backend
-npm run dev
-
-Start the frontend (new terminal)
-cd frontend
-npm run dev
-
-text
-
-Now open [http://localhost:5173](http://localhost:5173) and you're good to go.
+```
 
 ---
 
-## 🎯 What I'm Working On
+### 2️⃣ Backend setup
 
-- Making document sync more reliable
-- Adding user authentication (JWT-based)
-- Getting WebRTC video calls production-ready
-- Building out a proper permissions system
+```bash
+cd backend
+npm install
+```
+
+Create a file named `.env` in the **backend** folder and add:
+
+```bash
+PORT=2222
+MONGODB_URI=your_mongodb_uri_here
+GOOGLE_GENERATIVE_AI_API_KEY=your_google_gemini_api_key
+```
+
+Run the backend:
+
+```bash
+npm run dev
+```
 
 ---
 
-## 🤝 Want to Contribute?
+### 3️⃣ Frontend setup
 
-Feel free to open an issue or shoot me a pull request if you spot something broken or have ideas to improve things. All feedback is welcome!
+```bash
+cd frontend
+npm install
+```
+
+Create a file named `.env` in the **frontend** folder and add:
+
+```bash
+VITE_BACKEND_URL=http://localhost:2222
+```
+
+Run the frontend:
+
+```bash
+npm run dev
+```
+
+Now open 👉 [http://localhost:5173](http://localhost:5173)
+
+---
+
+## 🧭 Roadmap
+
+* ✅ Real-time chat
+* ✅ Collaborative docs
+* 🛠️ Improved document syncing
+* 🔐 JWT authentication
+* 📹 WebRTC video rooms
+* 🧱 Role-based permissions
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome!
+If you find a bug or want to add a feature, open an issue or submit a pull request.
 
 ---
 
 ## 📜 License
 
-MIT License — feel free to use this however you want.
+MIT License — free for personal and commercial use.
 
 ---
 
-## 👤 Made By
+## 👤 Author
 
-**Aman Ahmad**  
-🌐 [Portfolio](https://amanahmad.vercel.app/)  
+**Aman Ahmad**
+🌐 [Portfolio](https://amanahmad.vercel.app)
 🐙 [GitHub](https://github.com/wizardamxn)
+
+---
