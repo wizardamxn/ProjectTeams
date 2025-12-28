@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 import User from "./models/user.js"; // adjust path to your schema
+require("dotenv").config();
 
-const MONGO_URI = "mongodb+srv://amank225566:nq1oNFBKxRXiKfKu@wizardamxnxcluster.ovmio0y.mongodb.net/assignmentDB"
-    ; // change if needed
+const MONGO_URI = process.env.MONGO_URI
 
 const fixIndexes = async () => {
     try {
