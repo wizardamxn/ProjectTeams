@@ -36,7 +36,7 @@ const userSchema = new mongoose.Schema(
       },
     },
     teamCode: {
-      type : String,
+      type: String,
       required: true,
       minLength: 8,
       maxLength: 8
@@ -53,7 +53,7 @@ userSchema.methods.getJwtToken = function () {
       _id: this._id
     }
     ,
-    'CHINGCHONG',
+    process.env.JWT_KEY,
     {
       expiresIn: "1h"
     }
