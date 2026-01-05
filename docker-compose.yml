@@ -1,0 +1,23 @@
+services:
+  backend:
+    build: ./b
+    ports:
+      - "2222:2222"
+    env_file:
+      - ./b/.env
+    volumes:
+      - ./b:/app
+    restart: unless-stopped
+
+  frontend:
+    build: ./f
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./f:/app
+      - frontend_node_modules:/app/node_modules
+
+    depends_on:
+      - backend
+volumes:
+  frontend_node_modules:
