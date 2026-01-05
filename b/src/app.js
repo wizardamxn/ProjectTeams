@@ -17,7 +17,7 @@ const app = express();
 app.use(cookieParser());
 app.use(
   cors({
-    origin: true,
+   origin: "http://13.60.201.119",
     credentials: true,
   })
 );
