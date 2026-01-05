@@ -10,8 +10,8 @@ import { addUser } from "@/store/slices/User";
 export default function Login() {
   const navigate = useNavigate();
   // Preserving your default testing credentials
-  const [email, setEmail] = useState("amank225566@gmail.com");
-  const [password, setPassword] = useState("Aman11Aman!!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
