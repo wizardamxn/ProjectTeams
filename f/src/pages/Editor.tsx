@@ -65,7 +65,7 @@ const Editor = () => {
   const fetchDocument = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:2222/doc/${doc_id}`, {
+      const response = await axios.get(`/api/doc/${doc_id}`, {
         withCredentials: true,
       });
       const data = response.data;
@@ -101,14 +101,14 @@ const Editor = () => {
       let response;
       if (doc_id) {
         response = await axios.put(
-          `http://localhost:2222/edit/${doc_id}`,
+          `/api/edit/${doc_id}`,
           documentData,
           { withCredentials: true }
         );
       } else {
         // Fallback if somehow we are in editor without an ID (shouldn't happen often via routing)
         response = await axios.post(
-            `http://localhost:2222/create`,
+            `/api/create`,
             documentData,
             { withCredentials: true }
         );

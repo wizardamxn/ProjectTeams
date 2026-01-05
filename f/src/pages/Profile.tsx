@@ -56,13 +56,13 @@ export default function ProfilePage() {
         setLoading(true);
         
         // 1. Fetch Profile
-        const profileRes = await axios.get("http://localhost:2222/profile", {
+        const profileRes = await axios.get("/api/profile", {
             withCredentials: true 
         });
         setProfile(profileRes.data);
 
         // 2. Fetch User's Documents
-        const docsRes = await axios.get("http://localhost:2222/viewdocs", {
+        const docsRes = await axios.get("/api/viewdocs", {
             withCredentials: true
         });
         setDocuments(docsRes.data);

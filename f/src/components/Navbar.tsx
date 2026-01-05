@@ -31,7 +31,7 @@ export const Navbar = () => {
 
   const handleLogout = () => {
     const res = axios.post(
-      "http://localhost:2222/logout",
+      "/api/logout",
       {},
       { withCredentials: true }
     );

@@ -44,7 +44,7 @@ export default function Documents() {
     const fetchDocuments = async () => {
       try {
         setLoading(true);
-        const response = await axios.get("http://localhost:2222/teamdocs", {
+        const response = await axios.get("/api/teamdocs", {
           withCredentials: true,
         });
         setDocuments(response.data);
@@ -67,7 +67,7 @@ export default function Documents() {
         )
       );
       await axios.put(
-        `http://localhost:2222/star/${doc_id}`,
+        `/api/star/${doc_id}`,
         {},
         { withCredentials: true }
       );
@@ -94,7 +94,7 @@ export default function Documents() {
     if (!confirm("Delete this document?")) return;
 
     try {
-      await axios.delete(`http://localhost:2222/teamdocs/${id}`, {
+      await axios.delete(`/api/teamdocs/${id}`, {
         withCredentials: true,
       });
       setDocuments(documents.filter((doc) => doc._id !== id));

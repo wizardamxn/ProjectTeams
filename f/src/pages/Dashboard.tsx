@@ -41,7 +41,7 @@ export default function Dashboard() {
   const getDocs = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("http://localhost:2222/starred", {
+      const res = await axios.get("/api/starred", {
         withCredentials: true,
       });
       setStarredDocuments(res.data);
@@ -76,7 +76,7 @@ export default function Dashboard() {
         prevDocs.filter((doc) => doc._id !== doc_id)
       );
       await axios.put(
-        `http://localhost:2222/star/${doc_id}`,
+        `/api/star/${doc_id}`,
         {},
         { withCredentials: true }
       );
@@ -94,7 +94,7 @@ export default function Dashboard() {
       setStarredDocuments((prevDocs) =>
         prevDocs.filter((doc) => doc._id !== id)
       );
-      await axios.delete(`http://localhost:2222/teamdocs/${id}`, {
+      await axios.delete(`/api/teamdocs/${id}`, {
         withCredentials: true,
       });
     } catch (err) {
