@@ -65,7 +65,7 @@ export default function Chat() {
   useEffect(() => {
     const fetchTeamMembers = async () => {
       try {
-        const res = await axios.get("http://localhost:2222/teammembers", {
+        const res = await axios.get("/api/teammembers", {
           withCredentials: true,
         });
         setTeamMembers(res.data);
@@ -176,7 +176,7 @@ export const ChatMember = () => {
     const fetchTargetDetails = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:2222/user/${targetUserId}`
+          `/api/user/${targetUserId}`
         );
         setTargetUser(res.data);
       } catch (e) {
@@ -192,7 +192,7 @@ export const ChatMember = () => {
       setIsLoading(true);
       try {
         const res = await axios.get(
-          `http://localhost:2222/chat/${userId}/${targetUserId}`,
+          `/api/chat/${userId}/${targetUserId}`,
           { withCredentials: true }
         );
         const data = res.data;

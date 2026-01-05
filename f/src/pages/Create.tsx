@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 // Mock API for compilation (Replace with your actual import)
-const api = axios.create({ baseURL: "http://localhost:2222" });
+const api = axios.create({ baseURL: "/api" });
 
 export default function Create() {
   const navigate = useNavigate();
@@ -125,7 +125,7 @@ export default function Create() {
         starred: false,
       };
       const response = await axios.post(
-        "http://localhost:2222/create",
+        "/api/create",
         documentData,
         { withCredentials: true }
       );

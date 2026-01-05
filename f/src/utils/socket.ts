@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 
-const socket = io("http://localhost:2222", {
+const socket = io("/api", {
     withCredentials: true,
     autoConnect: true,
 });

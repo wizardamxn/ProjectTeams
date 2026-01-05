@@ -26,7 +26,7 @@ export default function Team() {
     const fetchMembers = async () => {
       try {
         setLoading(true);
-        const res = await axios.get("http://localhost:2222/teammembers", {
+        const res = await axios.get("/api/teammembers", {
             withCredentials: true
         });
         setMembers(res.data);

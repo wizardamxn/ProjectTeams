@@ -5,7 +5,7 @@ export const checkAuth = createAsyncThunk(
   "user/checkAuth",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await axios.get("http://localhost:2222/profile", {
+      const res = await axios.get("/api/profile", {
         withCredentials: true,
       });
       return res.data;
