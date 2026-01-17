@@ -1,7 +1,17 @@
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
-import { FileText, Plus, Edit, Trash2, Search, Star, Loader2, Clock, MoreVertical } from "lucide-react";
+import {
+  FileText,
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  Star,
+  Loader2,
+  Clock,
+  MoreVertical,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -33,6 +43,8 @@ interface Document {
 }
 
 export default function Documents() {
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -44,7 +56,7 @@ export default function Documents() {
     const fetchDocuments = async () => {
       try {
         setLoading(true);
-        const response = await axios.get("/api/teamdocs", {
+        const response = await axios.get(`${backendURL}/teamdocs`, {
           withCredentials: true,
         });
         setDocuments(response.data);
@@ -63,13 +75,13 @@ export default function Documents() {
     try {
       setDocuments((prevDocs) =>
         prevDocs.map((doc) =>
-          doc._id === doc_id ? { ...doc, starred: !doc.starred } : doc
-        )
+          doc._id === doc_id ? { ...doc, starred: !doc.starred } : doc,
+        ),
       );
       await axios.put(
-        `/api/star/${doc_id}`,
+        `${backendURL}/star/${doc_id}`,
         {},
-        { withCredentials: true }
+        { withCredentials: true },
       );
     } catch (err) {
       setDocuments(originalDocs);
@@ -86,7 +98,10 @@ export default function Documents() {
     if (diffHours < 24) return "Today";
     if (diffDays === 1) return "Yesterday";
     if (diffDays < 7) return `${diffDays} days ago`;
-    return new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return new Date(date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
   };
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
@@ -94,7 +109,7 @@ export default function Documents() {
     if (!confirm("Delete this document?")) return;
 
     try {
-      await axios.delete(`/api/teamdocs/${id}`, {
+      await axios.delete(`${backendURL}/teamdocs/${id}`, {
         withCredentials: true,
       });
       setDocuments(documents.filter((doc) => doc._id !== id));
@@ -107,24 +122,27 @@ export default function Documents() {
     (doc) =>
       doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.summary?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+      doc.tags.some((tag) =>
+        tag.toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
   );
 
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans selection:bg-zinc-800">
       <div className="max-w-[1600px] mx-auto p-4 min-h-screen flex flex-col">
         {/* Navbar - Hidden on Mobile to save space (Optional) */}
-       
 
         <div className="flex flex-1 gap-6 min-h-0 mt-4">
-        
-
           <main className="flex-1 w-full">
             {/* --- Header Section --- */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-white">Documents</h1>
-                <p className="text-sm text-zinc-400 mt-1">Manage and organize your team's knowledge base.</p>
+                <h1 className="text-2xl font-semibold tracking-tight text-white">
+                  Documents
+                </h1>
+                <p className="text-sm text-zinc-400 mt-1">
+                  Manage and organize your team's knowledge base.
+                </p>
               </div>
 
               <div className="flex items-center gap-3 w-full md:w-auto">
@@ -138,7 +156,7 @@ export default function Documents() {
                     className="w-full bg-zinc-900 border border-zinc-800 focus:border-zinc-700 rounded-md py-2 pl-9 pr-4 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none transition-all shadow-sm"
                   />
                 </div>
-                
+
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -159,24 +177,30 @@ export default function Documents() {
               </div>
             ) : error ? (
               <div className="text-center py-20">
-                <p className="text-red-400 bg-red-400/10 px-4 py-2 rounded-md inline-block text-sm">{error}</p>
+                <p className="text-red-400 bg-red-400/10 px-4 py-2 rounded-md inline-block text-sm">
+                  {error}
+                </p>
               </div>
             ) : filteredDocuments.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-zinc-500 border border-dashed border-zinc-800 rounded-lg bg-zinc-900/30">
                 <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mb-4 border border-zinc-800">
-                    <FileText className="w-8 h-8 opacity-20" />
+                  <FileText className="w-8 h-8 opacity-20" />
                 </div>
-                <h3 className="text-zinc-300 font-medium mb-1">No documents found</h3>
+                <h3 className="text-zinc-300 font-medium mb-1">
+                  No documents found
+                </h3>
                 <p className="text-sm max-w-xs text-center mb-6">
-                  {searchQuery ? "Try adjusting your search terms." : "Get started by creating your first team document."}
+                  {searchQuery
+                    ? "Try adjusting your search terms."
+                    : "Get started by creating your first team document."}
                 </p>
                 {!searchQuery && (
-                    <button 
-                        onClick={() => navigate("/create")}
-                        className="text-sm text-emerald-500 hover:text-emerald-400 font-medium"
-                    >
-                        Create a document &rarr;
-                    </button>
+                  <button
+                    onClick={() => navigate("/create")}
+                    className="text-sm text-emerald-500 hover:text-emerald-400 font-medium"
+                  >
+                    Create a document &rarr;
+                  </button>
                 )}
               </div>
             ) : (
@@ -199,12 +223,14 @@ export default function Documents() {
                       <button
                         onClick={(e) => handleStar(doc._id, e)}
                         className={`p-1.5 rounded-md transition-colors ${
-                          doc.starred 
-                            ? "text-yellow-500 bg-yellow-500/10" 
+                          doc.starred
+                            ? "text-yellow-500 bg-yellow-500/10"
                             : "text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800"
                         }`}
                       >
-                        <Star className={`w-4 h-4 ${doc.starred ? "fill-current" : ""}`} />
+                        <Star
+                          className={`w-4 h-4 ${doc.starred ? "fill-current" : ""}`}
+                        />
                       </button>
                     </div>
 
@@ -233,27 +259,30 @@ export default function Documents() {
                     {/* Card Footer */}
                     <div className="pt-3 border-t border-zinc-800/50 flex items-center justify-between text-xs text-zinc-500">
                       <div className="flex items-center gap-2">
-                         <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {formatRelativeTime(doc.updatedAt)}
-                         </span>
-                         <span>•</span>
-                         <span className="text-zinc-400">{doc.author.name}</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {formatRelativeTime(doc.updatedAt)}
+                        </span>
+                        <span>•</span>
+                        <span className="text-zinc-400">{doc.author.name}</span>
                       </div>
 
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <button 
-                            onClick={(e) => { e.stopPropagation(); navigate(`/editor/${doc._id}`); }}
-                            className="p-1.5 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white"
-                         >
-                            <Edit className="w-3.5 h-3.5" />
-                         </button>
-                         <button 
-                            onClick={(e) => handleDelete(doc._id, e)}
-                            className="p-1.5 hover:bg-red-500/10 rounded text-zinc-400 hover:text-red-400"
-                         >
-                            <Trash2 className="w-3.5 h-3.5" />
-                         </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/editor/${doc._id}`);
+                          }}
+                          className="p-1.5 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDelete(doc._id, e)}
+                          className="p-1.5 hover:bg-red-500/10 rounded text-zinc-400 hover:text-red-400"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   </motion.div>

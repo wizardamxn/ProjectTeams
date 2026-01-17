@@ -16,6 +16,7 @@ interface TeamMember {
 }
 
 export default function Team() {
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -26,7 +27,7 @@ export default function Team() {
     const fetchMembers = async () => {
       try {
         setLoading(true);
-        const res = await axios.get("/api/teammembers", {
+        const res = await axios.get(`${backendURL}/teammembers`, {
             withCredentials: true
         });
         setMembers(res.data);
