@@ -17,9 +17,10 @@ import { useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+const backendURL = import.meta.env.VITE_BACKEND_URL;
 
 // Mock API for compilation (Replace with your actual import)
-const api = axios.create({ baseURL: "/api" });
+const api = axios.create({ baseURL: `${backendURL}` });
 
 export default function Create() {
   const navigate = useNavigate();
@@ -83,7 +84,7 @@ export default function Create() {
       const response = await api.post(
         "/summarize",
         { content },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       console.log(response);
       setSummary(response.data.summary || "");
@@ -124,11 +125,9 @@ export default function Create() {
         tags,
         starred: false,
       };
-      const response = await axios.post(
-        "/api/create",
-        documentData,
-        { withCredentials: true }
-      );
+      const response = await axios.post(`${backendURL}/create`, documentData, {
+        withCredentials: true,
+      });
       toast.success("Document created");
       if (response.data.id) navigate(`/editor/${response.data.id}`);
       else navigate("/documents");

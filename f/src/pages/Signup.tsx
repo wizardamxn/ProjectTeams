@@ -1,18 +1,47 @@
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { FileText, Mail, Lock, User, ArrowRight } from "lucide-react";
+// Added 'Hash' to imports for the Team Code icon
+import { FileText, Mail, Lock, User, ArrowRight, Hash } from "lucide-react";
 import { useState } from "react";
+import axios from "axios";
+import { useDispatch } from "react-redux";
+import { addUser } from "@/store/slices/User";
 
 export default function Signup() {
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  const handleSignup = (e: React.FormEvent) => {
+  const fullName = name.trim();
+  // New state for Team Code
+  const [teamCode, setTeamCode] = useState("");
+  const dispatch = useDispatch();
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Add axios call here later
-    navigate("/dashboard");
+
+    try {
+      const res = await axios.post(
+        `${backendURL}/register`,
+        { fullName, email, password, teamCode },
+        { withCredentials: true },
+      );
+
+      dispatch(addUser(res.data));
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Signup failed:", error);
+    }
+  };
+
+  // Helper to enforce 8-digit number format
+  const handleTeamCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Only allow numbers and max 8 characters
+    if (/^\d*$/.test(value) && value.length <= 8) {
+      setTeamCode(value);
+    }
   };
 
   return (
@@ -25,20 +54,25 @@ export default function Signup() {
       >
         {/* Brand Header */}
         <div className="flex flex-col items-center mb-8">
-            <div className="w-12 h-12 bg-zinc-900 border border-zinc-800 rounded-xl flex items-center justify-center mb-4 shadow-sm">
-                <FileText className="w-6 h-6 text-zinc-100" />
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">Create an account</h1>
-            <p className="text-sm text-zinc-400 mt-2">Start collaborating with your team today</p>
+          <div className="w-12 h-12 bg-zinc-900 border border-zinc-800 rounded-xl flex items-center justify-center mb-4 shadow-sm">
+            <FileText className="w-6 h-6 text-zinc-100" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">
+            Create an account
+          </h1>
+          <p className="text-sm text-zinc-400 mt-2">
+            Start collaborating with your team today
+          </p>
         </div>
 
         {/* Card */}
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 shadow-xl backdrop-blur-sm">
           <form onSubmit={handleSignup} className="space-y-4">
-            
             {/* Name Input */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Full Name</label>
+              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                Full Name
+              </label>
               <div className="relative group">
                 <User className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500 group-focus-within:text-white transition-colors" />
                 <input
@@ -54,7 +88,9 @@ export default function Signup() {
 
             {/* Email Input */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Email</label>
+              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                Email
+              </label>
               <div className="relative group">
                 <Mail className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500 group-focus-within:text-white transition-colors" />
                 <input
@@ -70,7 +106,9 @@ export default function Signup() {
 
             {/* Password Input */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Password</label>
+              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                Password
+              </label>
               <div className="relative group">
                 <Lock className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500 group-focus-within:text-white transition-colors" />
                 <input
@@ -82,6 +120,30 @@ export default function Signup() {
                   required
                 />
               </div>
+            </div>
+
+            {/* Team Code Input (New Addition) */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                Team Code
+              </label>
+              <div className="relative group">
+                <Hash className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500 group-focus-within:text-white transition-colors" />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={teamCode}
+                  onChange={handleTeamCodeChange}
+                  className="w-full bg-zinc-950/50 border border-zinc-800 focus:border-zinc-600 rounded-lg py-2 pl-10 pr-4 text-sm text-white placeholder:text-zinc-600 outline-none transition-all font-mono tracking-widest"
+                  placeholder="00000000"
+                  minLength={8}
+                  maxLength={8}
+                  required
+                />
+              </div>
+              <p className="text-[10px] text-zinc-500 text-right">
+                {teamCode.length}/8 digits
+              </p>
             </div>
 
             {/* Submit Button */}
@@ -98,7 +160,10 @@ export default function Signup() {
         {/* Footer */}
         <p className="text-center text-sm text-zinc-500 mt-6">
           Already have an account?{" "}
-          <Link to="/login" className="text-zinc-200 hover:text-white font-medium transition-colors">
+          <Link
+            to="/login"
+            className="text-zinc-200 hover:text-white font-medium transition-colors"
+          >
             Sign in
           </Link>
         </p>

@@ -2,7 +2,7 @@ import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
 import { Send, Loader2, User, ArrowLeft } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
-import { Link, Outlet, useParams, useLocation } from "react-router-dom";
+import { Link, Outlet, useParams, useLocation, useOutletContext } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import { joinChat, sendMessage, setHistory } from "@/store/slices/SocketThunks";
@@ -55,17 +55,18 @@ const formatDaySeparator = (dateString?: string) => {
 };
 
 // ==========================================
-// 1. CHAT LAYOUT
+// 1. CHAT LAYOUT (PARENT)
 // ==========================================
 export default function Chat() {
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const location = useLocation();
-  const { userId } = useParams();
 
   useEffect(() => {
     const fetchTeamMembers = async () => {
       try {
-        const res = await axios.get("/api/teammembers", {
+        const res = await axios.get(`${backendURL}/teammembers`, {
           withCredentials: true,
         });
         setTeamMembers(res.data);
@@ -80,9 +81,6 @@ export default function Chat() {
   const isChatOpen = location.pathname.split("/").length > 2;
 
   return (
-    // FIX: Exact height calculation to prevent window scroll
-    // Mobile: 100vh - 64px (Navbar)
-    // Desktop: 100vh - 64px (Navbar) - 32px (Layout Padding top/bottom) ~ 96px
     <div className="h-[calc(100vh-64px)] md:h-[calc(100vh-96px)] bg-[#09090b] text-zinc-100 font-sans selection:bg-zinc-800 overflow-hidden rounded-xl border border-zinc-800">
       <div className="flex h-full relative">
         {/* Sidebar List */}
@@ -136,17 +134,16 @@ export default function Chat() {
             ))}
           </div>
         </aside>
+        
         {/* Chat Window Wrapper */}
         <main
           className={`
-    flex-1 flex flex-col min-w-0 bg-[#09090b] relative overflow-hidden
-    ${!isChatOpen ? "hidden md:flex" : "flex"}
-  `}
-          // REMOVED: "mt-4" (causes overflow)
-          // REMOVED: "h-full" (causes overflow when combined with flex-1 in some browsers)
-          // ADDED: "overflow-hidden" (forces the scroll to happen inside the child, not here)
+            flex-1 flex flex-col min-w-0 bg-[#09090b] relative overflow-hidden
+            ${!isChatOpen ? "hidden md:flex" : "flex"}
+          `}
         >
-          <Outlet key={location.pathname}/>
+          {/* OPTIMIZATION: Passing teamMembers to child to avoid double fetching */}
+          <Outlet context={{ teamMembers }} key={location.pathname} />
         </main>
       </div>
     </div>
@@ -154,13 +151,17 @@ export default function Chat() {
 }
 
 // ==========================================
-// 2. CHAT MEMBER (CHAT WINDOW)
+// 2. CHAT MEMBER (CHILD)
 // ==========================================
 export const ChatMember = () => {
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+  
+  // FIX: Receive data from parent
+  const { teamMembers } = useOutletContext<{ teamMembers: TeamMember[] }>();
+  
   const [messageText, setMessageText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [targetUser, setTargetUser] = useState<any>(null);
-
+  
   const dispatch = useDispatch();
   const { userId: targetUserId } = useParams();
 
@@ -171,30 +172,25 @@ export const ChatMember = () => {
   const messages = useSelector((state: any) => state?.chat?.messages);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!targetUserId) return;
-    const fetchTargetDetails = async () => {
-      try {
-        const res = await axios.get(
-          `/api/user/${targetUserId}`
-        );
-        setTargetUser(res.data);
-      } catch (e) {
-        console.error("Fetch user failed", e);
-      }
-    };
-    fetchTargetDetails();
-  }, [targetUserId]);
+  // FIX: Derived state (Faster than fetching again)
+  const targetUser = teamMembers.find(m => m._id === targetUserId);
 
   useEffect(() => {
-    const getHistory = async () => {
-      if (!userId || !targetUserId) return;
-      setIsLoading(true);
+    // 1. Safety checks
+    if (!userId || !targetUserId) return;
+
+    // 2. LOGIC FIX: Clear old messages IMMEDIATELY so the user doesn't see "ghost" chats
+    dispatch(setHistory([])); 
+    setIsLoading(true);
+
+    const loadChatFlow = async () => {
       try {
+        // 3. LOGIC FIX: Await history FIRST
         const res = await axios.get(
-          `/api/chat/${userId}/${targetUserId}`,
+          `${backendURL}/chat/${userId}/${targetUserId}`,
           { withCredentials: true }
         );
+        
         const data = res.data;
         const formattedHistory: SocketMessage[] = data.messages.map(
           (msg: any) => ({
@@ -207,18 +203,22 @@ export const ChatMember = () => {
             },
           })
         );
+        
+        // 4. Set History
         dispatch(setHistory(formattedHistory));
+
+        // 5. LOGIC FIX: Join socket AFTER history is loaded to prevent race conditions
+        dispatch(joinChat(userId, targetUserId));
+
       } catch (error) {
-        console.error("History fetch error", error);
+        console.error("Chat load error", error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (userId && targetUserId) {
-      getHistory();
-      dispatch(joinChat(userId, targetUserId));
-    }
+    loadChatFlow();
+
   }, [userId, targetUserId, dispatch]);
 
   useEffect(() => {
@@ -258,9 +258,8 @@ export const ChatMember = () => {
   }
 
   return (
-    // FIX: Using h-full here ensures we stay inside the parent's calculated height
     <div className="flex flex-col h-full w-full bg-[#09090b]">
-      {/* 1. Header (Fixed Height) */}
+      {/* 1. Header */}
       <div className="shrink-0 h-16 px-4 md:px-6 border-b border-zinc-800 flex items-center bg-zinc-900/95 backdrop-blur-sm z-20">
         <div className="flex items-center gap-3 w-full">
           <Link
@@ -287,8 +286,7 @@ export const ChatMember = () => {
         </div>
       </div>
 
-      {/* 2. Scrollable Messages Area */}
-      {/* FIX: overflow-y-auto combined with flex-1 forces the scrollbar HERE */}
+      {/* 2. Scrollable Messages */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-[#09090b] custom-scrollbar overscroll-contain min-h-0">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
@@ -302,7 +300,7 @@ export const ChatMember = () => {
               index === 0 ||
               !isSameDay(
                 msg.message.timestamp,
-                messages[index - 1]?.message?.timestamp
+                messages[index - 1]?.message?.timestamp,
               );
 
             return (
@@ -358,7 +356,7 @@ export const ChatMember = () => {
         <div ref={messagesEndRef} className="h-px" />
       </div>
 
-      {/* 3. Input Area (Fixed) */}
+      {/* 3. Input Area */}
       <div className="shrink-0 p-3 md:p-4 border-t border-zinc-800 bg-zinc-900/30 backdrop-blur-sm z-20">
         <form onSubmit={handleSend} className="flex gap-3">
           <input

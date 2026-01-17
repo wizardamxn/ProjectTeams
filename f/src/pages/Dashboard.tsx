@@ -1,10 +1,20 @@
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
-import { FileText, Plus, Edit, Trash2, Star, Loader2, Clock, ArrowUpRight } from "lucide-react";
+import {
+  FileText,
+  Plus,
+  Edit,
+  Trash2,
+  Star,
+  Loader2,
+  Clock,
+  ArrowUpRight,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useSelector } from "react-redux";
 
 interface Author {
   name: string;
@@ -33,15 +43,18 @@ interface Document {
 }
 
 export default function Dashboard() {
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+
   const [starredDocuments, setStarredDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-
+  const user = useSelector((store) => store.user.user);
+  console.log(user);
   const getDocs = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("/api/starred", {
+      const res = await axios.get(`${backendURL}/starred`, {
         withCredentials: true,
       });
       setStarredDocuments(res.data);
@@ -65,7 +78,10 @@ export default function Dashboard() {
     if (diffHours < 24) return "Today";
     if (diffDays === 1) return "Yesterday";
     if (diffDays < 7) return `${diffDays} days ago`;
-    return new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return new Date(date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
   };
 
   const handleUnstar = async (doc_id: string, e: React.MouseEvent) => {
@@ -73,12 +89,12 @@ export default function Dashboard() {
     const originalDocs = [...starredDocuments];
     try {
       setStarredDocuments((prevDocs) =>
-        prevDocs.filter((doc) => doc._id !== doc_id)
+        prevDocs.filter((doc) => doc._id !== doc_id),
       );
       await axios.put(
-        `/api/star/${doc_id}`,
+        `${backendURL}/star/${doc_id}`,
         {},
-        { withCredentials: true }
+        { withCredentials: true },
       );
     } catch (err) {
       setStarredDocuments(originalDocs);
@@ -92,9 +108,9 @@ export default function Dashboard() {
     const originalDocs = [...starredDocuments];
     try {
       setStarredDocuments((prevDocs) =>
-        prevDocs.filter((doc) => doc._id !== id)
+        prevDocs.filter((doc) => doc._id !== id),
       );
-      await axios.delete(`/api/teamdocs/${id}`, {
+      await axios.delete(`${backendURL}/teamdocs/${id}`, {
         withCredentials: true,
       });
     } catch (err) {
@@ -102,22 +118,25 @@ export default function Dashboard() {
       alert("Failed to delete document");
     }
   };
-
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans selection:bg-zinc-800">
       <div className="max-w-[1600px] mx-auto p-4 min-h-screen flex flex-col">
         {/* Navbar */}
-       
 
         <div className="flex flex-1 gap-6 min-h-0 mt-4">
-          
           <main className="flex-1 w-full">
             {/* --- Header Section --- */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-white">Dashboard</h1>
+                <h1 className="text-2xl font-semibold tracking-tight text-white">
+                  Dashboard
+                </h1>
                 <p className="text-sm text-zinc-400 mt-1">
-                  Welcome back, John. You have <span className="text-zinc-200 font-medium">{starredDocuments.length} starred</span> documents.
+                  Welcome back, {user.fullName}. You have{" "}
+                  <span className="text-zinc-200 font-medium">
+                    {starredDocuments.length} starred
+                  </span>{" "}
+                  documents.
                 </p>
               </div>
 
@@ -135,7 +154,9 @@ export default function Dashboard() {
             {/* --- Section Title --- */}
             <div className="flex items-center gap-2 mb-4 pb-2 border-b border-zinc-800/50">
               <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-              <h2 className="text-sm font-medium text-zinc-200 uppercase tracking-wider">Favorites</h2>
+              <h2 className="text-sm font-medium text-zinc-200 uppercase tracking-wider">
+                Favorites
+              </h2>
             </div>
 
             {/* --- Content Area --- */}
@@ -146,22 +167,27 @@ export default function Dashboard() {
               </div>
             ) : error ? (
               <div className="text-center py-20">
-                <p className="text-red-400 bg-red-400/10 px-4 py-2 rounded-md inline-block text-sm">{error}</p>
+                <p className="text-red-400 bg-red-400/10 px-4 py-2 rounded-md inline-block text-sm">
+                  {error}
+                </p>
               </div>
             ) : starredDocuments.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-zinc-500 border border-dashed border-zinc-800 rounded-lg bg-zinc-900/30">
                 <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mb-4 border border-zinc-800">
-                    <Star className="w-8 h-8 opacity-20" />
+                  <Star className="w-8 h-8 opacity-20" />
                 </div>
-                <h3 className="text-zinc-300 font-medium mb-1">No starred documents</h3>
+                <h3 className="text-zinc-300 font-medium mb-1">
+                  No starred documents
+                </h3>
                 <p className="text-sm max-w-xs text-center mb-6">
-                  Star important documents to access them quickly from your dashboard.
+                  Star important documents to access them quickly from your
+                  dashboard.
                 </p>
-                <button 
-                    onClick={() => navigate("/docs")}
-                    className="text-sm text-emerald-500 hover:text-emerald-400 font-medium"
+                <button
+                  onClick={() => navigate("/docs")}
+                  className="text-sm text-emerald-500 hover:text-emerald-400 font-medium"
                 >
-                    Browse all documents &rarr;
+                  Browse all documents &rarr;
                 </button>
               </div>
             ) : (
@@ -205,27 +231,30 @@ export default function Dashboard() {
                     {/* Card Footer */}
                     <div className="pt-3 border-t border-zinc-800/50 flex items-center justify-between text-xs text-zinc-500 mt-4">
                       <div className="flex items-center gap-2">
-                         <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {formatRelativeTime(doc.updatedAt)}
-                         </span>
-                         <span>•</span>
-                         <span className="text-zinc-400">{doc.author.name}</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {formatRelativeTime(doc.updatedAt)}
+                        </span>
+                        <span>•</span>
+                        <span className="text-zinc-400">{doc.author.name}</span>
                       </div>
 
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <button 
-                            onClick={(e) => { e.stopPropagation(); navigate(`/editor/${doc._id}`); }}
-                            className="p-1.5 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white"
-                         >
-                            <Edit className="w-3.5 h-3.5" />
-                         </button>
-                         <button 
-                            onClick={(e) => handleDelete(doc._id, e)}
-                            className="p-1.5 hover:bg-red-500/10 rounded text-zinc-400 hover:text-red-400"
-                         >
-                            <Trash2 className="w-3.5 h-3.5" />
-                         </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/editor/${doc._id}`);
+                          }}
+                          className="p-1.5 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDelete(doc._id, e)}
+                          className="p-1.5 hover:bg-red-500/10 rounded text-zinc-400 hover:text-red-400"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   </motion.div>

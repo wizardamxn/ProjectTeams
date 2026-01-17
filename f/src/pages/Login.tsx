@@ -10,6 +10,7 @@ import { addUser } from "@/store/slices/User";
 export default function Login() {
   const navigate = useNavigate();
   // Preserving your default testing credentials
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,9 +31,9 @@ export default function Login() {
 
     try {
       const res = await axios.post(
-        "/api/login",
+        `${backendURL}/login`,
         { email, password },
-        { withCredentials: true }
+        { withCredentials: true },
       );
 
       dispatch(addUser(res.data)); // Uncomment when redux is ready
@@ -40,7 +41,7 @@ export default function Login() {
     } catch (err: any) {
       console.error(err);
       setError(
-        err.response?.data?.message || "Invalid credentials. Please try again."
+        err.response?.data?.message || "Invalid credentials. Please try again.",
       );
     } finally {
       setLoading(false);
