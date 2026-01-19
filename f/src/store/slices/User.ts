@@ -1,18 +1,19 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axios from "axios";
 
+const backendURL = import.meta.env.VITE_BACKEND_URL;
 export const checkAuth = createAsyncThunk(
   "user/checkAuth",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await axios.get("${backendURL}/profile", {
+      const res = await axios.get(`${backendURL}/profile`, {
         withCredentials: true,
       });
       return res.data;
-    } catch (error) {
-      return rejectWithValue("Not authenticated");
+    } catch {
+      return rejectWithValue(null);
     }
-  }
+  },
 );
 
 const userSlice = createSlice({
@@ -25,13 +26,16 @@ const userSlice = createSlice({
     addUser: (state, action) => {
       state.user = action.payload;
     },
+    logout: (state) => {
+      state.user = null;
+    }
   },
   extraReducers: (builder) => {
     builder
       .addCase(checkAuth.pending, (state) => {
         state.isAuthChecking = true;
       })
-      .addCase(checkAuth.fulfilled, (state,action) => {
+      .addCase(checkAuth.fulfilled, (state, action) => {
         state.isAuthChecking = false;
         state.user = action.payload;
       })
@@ -42,6 +46,6 @@ const userSlice = createSlice({
   },
 });
 
-export const { addUser } = userSlice.actions;
+export const { addUser, logout } = userSlice.actions;
 
 export default userSlice.reducer;
