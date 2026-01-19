@@ -13,6 +13,8 @@ import {
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import axios from "axios";
+import { useDispatch } from "react-redux";
+import { addUser, logout } from "@/store/slices/User";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -25,17 +27,20 @@ export const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
+  const dispatch = useDispatch();
 
-  const handleLogout = () => {
-    const res = axios.post(
-      "${backendURL}/logout",
-      {},
-      { withCredentials: true }
-    );
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      await axios.post(`${backendURL}/logout`, {}, { withCredentials: true });
+
+      dispatch(logout()); // or logoutUser()
+      navigate("/login", { replace: true });
+    } catch (err) {
+      console.error("Logout failed", err);
+    }
   };
 
   return (
@@ -130,13 +135,13 @@ export const Navbar = () => {
                           "flex items-center gap-3 px-3 py-3 rounded-lg transition-colors",
                           active
                             ? "bg-zinc-800 text-white"
-                            : "text-zinc-400 hover:text-zinc-100"
+                            : "text-zinc-400 hover:text-zinc-100",
                         )}
                       >
                         <Icon
                           className={cn(
                             "w-5 h-5",
-                            active ? "text-emerald-500" : "text-zinc-500"
+                            active ? "text-emerald-500" : "text-zinc-500",
                           )}
                         />
                         <span className="font-medium text-sm">

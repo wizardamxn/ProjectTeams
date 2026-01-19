@@ -9,7 +9,7 @@ import {
   Outlet,
 } from "react-router-dom";
 import { useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { addUser, checkAuth } from "./store/slices/User";
 import axios from "axios";
 import { listenToMessages } from "./store/slices/SocketThunks";
@@ -69,12 +69,22 @@ const router = createBrowserRouter([
 
 const App = () => {
   const dispatch = useDispatch();
+  const user = useSelector((s) => s.user.user);
+  const isAuthChecking = useSelector((s) => s.user.isAuthChecking);
 
   useEffect(() => {
     dispatch(checkAuth());
-    dispatch(listenToMessages());
   }, [dispatch]);
 
+  useEffect(() => {
+    if (user) {
+      dispatch(listenToMessages());
+    }
+  }, [user, dispatch]);
+
+  if (isAuthChecking) {
+    return <div>Loading...</div>;
+  }
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

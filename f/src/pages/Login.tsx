@@ -1,17 +1,17 @@
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { 
-  FileText, 
-  Mail, 
-  Lock, 
-  ArrowRight, 
-  Loader2, 
-  Eye, 
-  EyeOff 
+import {
+  FileText,
+  Mail,
+  Lock,
+  ArrowRight,
+  Loader2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector, useStore } from "react-redux";
 import { addUser } from "@/store/slices/User";
 
 export default function Login() {
@@ -25,6 +25,14 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const user = useSelector((s) => s.user.user);
+  const isAuthChecking = useSelector((s) => s.user.isAuthChecking);
+
+  useEffect(() => {
+    if (!isAuthChecking && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, isAuthChecking, navigate]);
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -86,11 +94,10 @@ export default function Login() {
         {/* Card */}
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 shadow-xl backdrop-blur-sm">
           <form onSubmit={handleLogin} className="space-y-4">
-            
             {/* Email Input */}
             <div className="space-y-1.5">
-              <label 
-                htmlFor="email" 
+              <label
+                htmlFor="email"
                 className="text-xs font-medium text-zinc-400 uppercase tracking-wider"
               >
                 Email
@@ -114,8 +121,8 @@ export default function Login() {
             {/* Password Input */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label 
-                  htmlFor="password" 
+                <label
+                  htmlFor="password"
                   className="text-xs font-medium text-zinc-400 uppercase tracking-wider"
                 >
                   Password
@@ -140,7 +147,7 @@ export default function Login() {
                   placeholder="••••••••"
                   required
                 />
-                
+
                 {/* Toggle Visibility Button */}
                 <button
                   type="button"
@@ -159,7 +166,7 @@ export default function Login() {
 
             {/* Error Message */}
             {error && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 className="p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2"
