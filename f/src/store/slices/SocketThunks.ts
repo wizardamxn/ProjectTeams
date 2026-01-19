@@ -11,9 +11,12 @@ export const joinChat = (userId, targetUserId) => () => {
 export const sendMessage = (payload) => () => {
   socket.emit("sendMessage", payload);
 };
+let isListening = false;
 
 // listen for incoming messages (register ONCE)
 export const listenToMessages = () => (dispatch) => {
+  if (isListening) return;
+  isListening = true;
   socket.on("messageReceived", ({ chatId, message }) => {
     dispatch(addMessage({ chatId, message }));
   });
