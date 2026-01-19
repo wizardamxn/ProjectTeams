@@ -35,24 +35,58 @@ authRouter.post("/login", async (req, res) => {
 /* ================= REGISTER ================= */
 authRouter.post("/register", async (req, res) => {
   try {
-    const hash = await bcrypt.hash(req.body.password, 10);
+    const { fullName, email, password, teamCode } = req.body;
 
-    const creds = {
-      fullName: req.body.fullName,
-      email: req.body.email,
+    // 1. Basic validation
+    if (!fullName || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+
+    // 2. Normalize email
+    const normalizedEmail = email.toLowerCase();
+
+    // 3. Hash password
+    const hash = await bcrypt.hash(password, 10);
+
+    // 4. Create user
+    await User.init(); // ensure indexes
+
+    const user = await User.create({
+      fullName,
+      email: normalizedEmail,
       password: hash,
-      teamCode: req.body.teamCode,
-    };
+      teamCode,
+    });
 
-    await User.init(); // ensures unique index
-    const user = new User(creds);
-    await user.save();
+    // 5. Generate JWT
+    const jwtToken = user.getJwtToken();
 
-    res.status(201).send("USER REGISTERED SUCCESSFULLY");
+    // 6. Secure cookie settings (IMPORTANT)
+    res.cookie("token", jwtToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 60 * 60 * 1000, // 1 hour
+    });
+
+    res.status(201).json({ message: "User registered successfully" });
+
   } catch (err) {
-    res.status(500).send("ERROR: " + err.message);
+
+    // 7. Handle duplicate email error
+    if (err.code === 11000) {
+      return res.status(409).json({ message: "Email already exists" });
+    }
+
+    console.error(err);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 /* ================= LOGOUT ================= */
 authRouter.post("/logout", (req, res) => {

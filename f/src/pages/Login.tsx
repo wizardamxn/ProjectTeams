@@ -57,7 +57,7 @@ export default function Login() {
         { email, password },
         { withCredentials: true },
       );
-
+      console.log("Login successful:", res.data);
       dispatch(addUser(res.data));
       navigate("/dashboard");
     } catch (err: any) {

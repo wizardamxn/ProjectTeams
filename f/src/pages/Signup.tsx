@@ -1,21 +1,21 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { 
-  FileText, 
-  Mail, 
-  Lock, 
-  User, 
-  ArrowRight, 
-  Hash, 
-  Eye, 
-  EyeOff, 
+import {
+  FileText,
+  Mail,
+  Lock,
+  User,
+  ArrowRight,
+  Hash,
+  Eye,
+  EyeOff,
   Loader2,
-  AlertCircle 
+  AlertCircle,
 } from "lucide-react";
 import { useState } from "react";
 import axios from "axios";
 import { useDispatch } from "react-redux";
-import { addUser } from "@/store/slices/User";
+import { addUser, logout } from "@/store/slices/User";
 
 export default function Signup() {
   const backendURL = import.meta.env.VITE_BACKEND_URL;
@@ -28,7 +28,7 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [teamCode, setTeamCode] = useState("");
-  
+
   // UI State
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -51,12 +51,19 @@ export default function Signup() {
         { withCredentials: true },
       );
 
-      dispatch(addUser(res.data));
+      const me = await axios.get(`${backendURL}/profile`, {
+        withCredentials: true,
+      });
+
+      dispatch(addUser(me.data));
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Signup failed:", error);
       // specific error message from backend or fallback
-      setError(error.response?.data?.message || "Failed to create account. Please try again.");
+      setError(
+        error.response?.data?.message ||
+          "Failed to create account. Please try again.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -94,11 +101,10 @@ export default function Signup() {
 
         {/* Card */}
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 shadow-xl backdrop-blur-sm">
-          
           {/* Error Message Alert */}
           <AnimatePresence>
             {error && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, height: 0, mb: 0 }}
                 animate={{ opacity: 1, height: "auto", mb: 16 }}
                 exit={{ opacity: 0, height: 0, mb: 0 }}
@@ -182,7 +188,9 @@ export default function Signup() {
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex justify-between items-center">
                 <span>Team Code</span>
-                <span className={`text-[10px] ${isTeamCodeValid ? 'text-green-500' : 'text-zinc-600'}`}>
+                <span
+                  className={`text-[10px] ${isTeamCodeValid ? "text-green-500" : "text-zinc-600"}`}
+                >
                   {teamCode.length}/8 digits
                 </span>
               </label>
@@ -194,7 +202,7 @@ export default function Signup() {
                   value={teamCode}
                   onChange={handleTeamCodeChange}
                   className={`w-full bg-zinc-950/50 border focus:border-zinc-600 rounded-lg py-2 pl-10 pr-4 text-sm text-white placeholder:text-zinc-600 outline-none transition-all font-mono tracking-widest
-                    ${isTeamCodeValid ? 'border-zinc-800' : 'border-zinc-800 focus:border-red-900/50'}
+                    ${isTeamCodeValid ? "border-zinc-800" : "border-zinc-800 focus:border-red-900/50"}
                   `}
                   placeholder="00000000"
                   minLength={8}
@@ -210,9 +218,10 @@ export default function Signup() {
               disabled={isLoading || !isTeamCodeValid}
               className={`
                 w-full font-medium py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 mt-2
-                ${isLoading || !isTeamCodeValid 
-                  ? "bg-zinc-800 text-zinc-500 cursor-not-allowed" 
-                  : "bg-zinc-100 hover:bg-white text-zinc-950"
+                ${
+                  isLoading || !isTeamCodeValid
+                    ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                    : "bg-zinc-100 hover:bg-white text-zinc-950"
                 }
               `}
             >
