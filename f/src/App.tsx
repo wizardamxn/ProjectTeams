@@ -18,6 +18,7 @@ import { listenToMessages } from "./store/slices/SocketThunks";
 import Layout from "./components/Layout"; // Make sure you created this file!
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
 import Documents from "./pages/Documents";
 import Editor from "./pages/Editor";
@@ -26,6 +27,8 @@ import Team from "./pages/Team";
 import NotFound from "./pages/NotFound";
 import ProfilePage from "./pages/Profile";
 import Create from "./pages/Create";
+import RAGDocs from "./pages/RAGDocs";
+import RAGDocDetail from "./pages/RAGDocDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -35,6 +38,7 @@ const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/login" replace /> },
   { path: "/login", element: <Login /> },
   { path: "/signup", element: <Signup /> },
+  { path: "/forgot-password", element: <ForgotPassword /> },
 
   // --- Private Routes (Wrapped in Layout) ---
   {
@@ -47,6 +51,8 @@ const router = createBrowserRouter([
           { path: "/documents", element: <Documents /> },
           { path: "/team", element: <Team /> },
           { path: "/profile", element: <ProfilePage /> },
+          { path: "/rag-docs", element: <RAGDocs /> },
+          { path: "/rag-docs/:id", element: <RAGDocDetail /> },
 
           // Editor & Create (Wrapped so they get the sidebar too)
           { path: "/create", element: <Create /> },

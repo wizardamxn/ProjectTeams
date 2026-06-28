@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   MessageSquare,
   Users,
+  Database,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ const navItems = [
   { icon: FileText, label: "Documents", path: "/documents" },
   { icon: MessageSquare, label: "Chat", path: "/chat" },
   { icon: Users, label: "Team", path: "/team" },
+  { icon: Database, label: "RAG Docs", path: "/rag-docs" },
 ];
 
 export const Navbar = () => {
@@ -34,7 +36,7 @@ export const Navbar = () => {
 
   const handleLogout = async () => {
     try {
-      await axios.post(`${backendURL}/logout`, {}, { withCredentials: true });
+      await axios.post(`${backendURL}/api/auth/logout`, {}, { withCredentials: true });
 
       dispatch(logout()); // or logoutUser()
       navigate("/login", { replace: true });

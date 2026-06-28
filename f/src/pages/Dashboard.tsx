@@ -54,7 +54,7 @@ export default function Dashboard() {
   const getDocs = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${backendURL}/starred`, {
+      const res = await axios.get(`${backendURL}/api/doc/starred`, {
         withCredentials: true,
       });
       setStarredDocuments(res.data);
@@ -92,7 +92,7 @@ export default function Dashboard() {
         prevDocs.filter((doc) => doc._id !== doc_id),
       );
       await axios.put(
-        `${backendURL}/star/${doc_id}`,
+        `${backendURL}/api/doc/star/${doc_id}`,
         {},
         { withCredentials: true },
       );
@@ -110,7 +110,7 @@ export default function Dashboard() {
       setStarredDocuments((prevDocs) =>
         prevDocs.filter((doc) => doc._id !== id),
       );
-      await axios.delete(`${backendURL}/teamdocs/${id}`, {
+      await axios.delete(`${backendURL}/api/doc/teamdocs/${id}`, {
         withCredentials: true,
       });
     } catch (err) {

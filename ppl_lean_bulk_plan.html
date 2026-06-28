@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>6-Day PPL — Lean Bulk</title>
+<style>
+:root{
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --color-text-primary:#1A1A18;
+  --color-text-secondary:#6B6B64;
+  --color-text-tertiary:#9C9C92;
+  --color-background-primary:#FFFFFF;
+  --color-background-secondary:#F4F3EE;
+  --color-border-secondary:#D9D7CF;
+  --color-border-tertiary:#ECEAE3;
+  --border-radius-lg:14px;
+  --border-radius-md:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:auto;}
+body{font-family:var(--font-sans);background:#FAF9F5;color:var(--color-text-primary);min-height:100vh;overflow-y:auto;-webkit-font-smoothing:antialiased;}
+.container{max-width:780px;margin:0 auto;padding:1.75rem 1.25rem 4rem;}
+.page-head{margin-bottom:1.25rem;}
+.page-head h1{font-size:21px;font-weight:600;letter-spacing:-.01em;color:var(--color-text-primary);}
+.page-head p{font-size:12.5px;color:var(--color-text-secondary);margin-top:4px;line-height:1.5;}
+.wrap{padding:.5rem 0 0;}
+.tabs{display:flex;gap:5px;margin-bottom:1.25rem;flex-wrap:wrap;}
+.tab{padding:6px 13px;font-size:12px;font-weight:500;border-radius:999px;border:0.5px solid var(--color-border-secondary);background:transparent;cursor:pointer;color:var(--color-text-secondary);transition:all .15s;}
+.tab:hover{background:var(--color-background-secondary);color:var(--color-text-primary);}
+.tab.active{background:var(--color-text-primary);color:var(--color-background-primary);border-color:var(--color-text-primary);}
+.panel{display:none;}.panel.active{display:block;}
+.day-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+.day-header{display:flex;align-items:center;gap:10px;padding:.85rem 1.25rem;border-bottom:0.5px solid var(--color-border-tertiary);}
+.day-icon{width:34px;height:34px;border-radius:var(--border-radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.day-title{font-size:14px;font-weight:600;color:var(--color-text-primary);}
+.day-sub{font-size:11px;color:var(--color-text-secondary);margin-top:1px;}
+.badge{font-size:11px;padding:2px 9px;border-radius:999px;font-weight:500;margin-left:auto;flex-shrink:0;}
+.col-header{display:grid;grid-template-columns:1fr 96px 66px;gap:6px;padding:5px 1.25rem;background:var(--color-background-secondary);}
+.col-h{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-tertiary);}
+.ex-row{display:grid;grid-template-columns:1fr 96px 66px;align-items:center;gap:6px;padding:7px 1.25rem;border-bottom:0.5px solid var(--color-border-tertiary);}
+.ex-row:last-child{border-bottom:none;}
+.ex-row:hover{background:var(--color-background-secondary);}
+.ex-name{font-size:13px;font-weight:500;color:var(--color-text-primary);}
+.ex-muscle{font-size:11px;color:var(--color-text-secondary);margin-top:1px;}
+.ex-sets{font-size:12px;color:var(--color-text-secondary);text-align:center;}
+.ex-rpe{font-size:11px;padding:2px 7px;border-radius:999px;background:var(--color-background-secondary);color:var(--color-text-secondary);width:fit-content;margin-left:auto;white-space:nowrap;}
+.changed{background:#FDF6EC;}
+.changed .ex-name{color:#854F0B;}
+.kept{background:#F0FAF5;}
+.kept .ex-name{color:#085041;}
+.added{background:#EEF0FE;}
+.added .ex-name{color:#2E2A6B;}
+.tag{font-size:10px;padding:1px 6px;border-radius:999px;margin-left:5px;vertical-align:middle;font-weight:500;white-space:nowrap;}
+.tag-swap{background:#FAEEDA;color:#633806;}
+.tag-keep{background:#E1F5EE;color:#085041;}
+.tag-add{background:#E1E4FC;color:#2E2A6B;}
+.note{font-size:11px;color:var(--color-text-tertiary);padding:.4rem .25rem 0;line-height:1.55;}
+.info-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:.8rem 1rem;margin-bottom:8px;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+.info-title{font-size:12.5px;font-weight:600;color:var(--color-text-primary);margin-bottom:4px;}
+.info-text{font-size:12px;color:var(--color-text-secondary);line-height:1.55;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:6px;}
+.rule-item{display:flex;gap:8px;font-size:12px;color:var(--color-text-secondary);margin-bottom:6px;line-height:1.5;}
+.dtable{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+.dtable th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--color-text-tertiary);font-weight:500;padding:5px 8px;border-bottom:0.5px solid var(--color-border-secondary);}
+.dtable td{padding:6px 8px;border-bottom:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary);vertical-align:top;}
+.dtable td:first-child{color:var(--color-text-primary);font-weight:500;}
+.dtable tr:last-child td{border-bottom:none;}
+.dtable .total td{font-weight:600;color:var(--color-text-primary);background:var(--color-background-secondary);}
+.num{text-align:right;white-space:nowrap;}
+.recipe{list-style:none;}
+.recipe li{display:flex;gap:8px;font-size:12px;color:var(--color-text-secondary);margin-bottom:5px;line-height:1.5;}
+.recipe li b{color:var(--color-text-primary);font-weight:500;}
+@media(max-width:560px){.grid2{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="page-head">
+    <h1>6-Day PPL &middot; Lean Bulk</h1>
+    <p>Personalised &middot; tailbone-safe legs &middot; full arms, forearms &amp; abs &middot; intensity &amp; nutrition tuned for a slow lean bulk</p>
+  </div>
+  <div class="wrap">
+    <div class="tabs" id="tabs"></div>
+    <div id="panels"></div>
+  </div>
+</div>
+
+<script>
+const howToRunHTML = `
+  <div class="info-card">
+    <div class="info-title">Intensity (RPE) &mdash; the #1 change for a lean bulk</div>
+    <div class="info-text">RPE = how close to failure a set is. RPE 8 means you stop with ~2 good reps still in the tank. On a 6-day split, recovery is exactly what lets you add weight week to week &mdash; so most working sets should leave reps in reserve, not be grind-fests.</div>
+  </div>
+  <div class="grid2">
+    <div class="info-card" style="border-top:2px solid #534AB7;border-radius:0 0 var(--border-radius-md) var(--border-radius-md);">
+      <div class="info-title">Compounds &rarr; RPE 7&ndash;8</div>
+      <div class="info-text">Bench, squat, overhead/incline press, rows, deadlift, RDL. Leave 2&ndash;3 reps in reserve. Protects joints and CNS so you can train hard 6 days.</div>
+    </div>
+    <div class="info-card" style="border-top:2px solid #1D9E75;border-radius:0 0 var(--border-radius-md) var(--border-radius-md);">
+      <div class="info-title">Isolation / arms / abs &rarr; RPE 8&ndash;10</div>
+      <div class="info-text">Curls, lateral raises, leg ext/curl, calves, crunches. Small muscles recover fast &mdash; push these to 0&ndash;2 reps from failure.</div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="info-card">
+      <div class="info-title">Progression &mdash; the engine of the bulk</div>
+      <div class="info-text">Double progression: hit the TOP of the rep range on all sets &rarr; add a small load &rarr; drop back to the bottom and climb again. No progression = the surplus just becomes fat.</div>
+    </div>
+    <div class="info-card">
+      <div class="info-title">Rest periods</div>
+      <div class="info-text">Heavy compounds: 2&ndash;3 min. Isolation: 60&ndash;90 s. Calves / abs: 45&ndash;60 s. Don&apos;t rush compounds &mdash; full recovery = more reps = more growth.</div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="info-card">
+      <div class="info-title">Warm-up</div>
+      <div class="info-text">5 min light cardio, then 2&ndash;3 ramp-up sets on the first compound of the session (do NOT count these as working sets). A couple of feeder sets before heavy presses/squats.</div>
+    </div>
+    <div class="info-card">
+      <div class="info-title">Deload &mdash; every 6&ndash;8 weeks</div>
+      <div class="info-text">Take one week at ~half the sets and lighter loads (RPE 6&ndash;7). Mandatory on a 6-day split &mdash; it&apos;s what prevents the burnout/plateau that high frequency otherwise causes.</div>
+    </div>
+  </div>
+  <div class="info-card" style="border-left:2px solid #B5731A;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;">
+    <div class="info-title">Legs &mdash; with vs without lunges</div>
+    <div class="info-text" style="line-height:1.75;">
+      <b>Without lunges (your default):</b> the unilateral slot on Legs A is <b>single-leg leg press</b> (seated, zero tailbone load) or <b>box step-ups</b> (vertical, no posterior pressure).<br>
+      <b>With lunges (if the tailbone ever settles):</b> swap that slot for <b>reverse lunges</b> (DB or Smith) &mdash; gentler on the lower back than walking/forward lunges &mdash; or full walking lunges.<br>
+      Only that one exercise changes between the two versions; everything else stays identical.
+    </div>
+  </div>
+`;
+
+const nutritionHTML = `
+  <div class="info-card">
+    <div class="info-title">Lean bulk &mdash; slow on purpose</div>
+    <div class="info-text">Eat ~<b>200&ndash;300 kcal over maintenance</b>, targeting <b>0.25&ndash;0.5 lb / week</b> (~2 lb/month). Gaining slower than this is mostly muscle; gaining faster is mostly fat you&apos;ll have to cut off later.</div>
+  </div>
+  <div class="grid2">
+    <div class="info-card">
+      <div class="info-title">Protein</div>
+      <div class="info-text"><b>1.6&ndash;2.2 g per kg</b> of bodyweight, every day. Spread across 3&ndash;5 meals. This is the single most important number for building muscle in a surplus.</div>
+    </div>
+    <div class="info-card">
+      <div class="info-title">Carbs &amp; fats</div>
+      <div class="info-text">Carbs fuel your 6 sessions &mdash; put most around training. Fats ~0.5&ndash;1 g/kg for hormones. Fill the rest of your calories here once protein is hit.</div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="info-card">
+      <div class="info-title">Weekly check-in</div>
+      <div class="info-text">Weigh first thing each morning, use the weekly average. Gaining &gt;0.5 lb/wk &rarr; trim ~150 kcal. Stalled 2&ndash;3 weeks &rarr; add ~150 kcal. Adjust food, not motivation.</div>
+    </div>
+    <div class="info-card">
+      <div class="info-title">Sleep</div>
+      <div class="info-text"><b>7&ndash;9 hours.</b> On a 6-day split this is non-negotiable &mdash; it&apos;s where the recovery and muscle growth from all that volume actually happens.</div>
+    </div>
+  </div>
+  <div class="info-card" style="border-left:2px solid #1D9E75;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;">
+    <div class="info-title">You&apos;ve got plenty of runway</div>
+    <div class="info-text">At ~14% body fat you can lean bulk for a good while before it&apos;s worth cutting. A sensible ceiling is ~15&ndash;18% &mdash; ride the bulk until then, then run a short mini-cut and continue. No rush.</div>
+  </div>
+`;
+
+const dietHTML = `
+  <div class="info-card" style="border-left:2px solid #E24B4A;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;">
+    <div class="info-title">The verdict &mdash; you&apos;re under-eating for a bulk</div>
+    <div class="info-text">Your current diet is roughly <b>1,700 kcal</b>. Your lean-bulk target (desk job adjusted) is <b>~2,550&ndash;2,650 kcal</b>. You&apos;re ~<b>900 kcal short every day</b> &mdash; that&apos;s the real reason you&apos;re stuck at 65 kg, not your training. Food quality is great; you just need more of it.</div>
+  </div>
+
+  <div class="info-card">
+    <div class="info-title">Your current day (estimated)</div>
+    <table class="dtable">
+      <tr><th>Food</th><th class="num">Calories</th><th class="num">Protein</th></tr>
+      <tr><td>7&ndash;8 rotis (medium, light ghee)</td><td class="num">~790</td><td class="num">~26 g</td></tr>
+      <tr><td>6 eggs</td><td class="num">~430</td><td class="num">~38 g</td></tr>
+      <tr><td>1 scoop whey</td><td class="num">~120</td><td class="num">~24 g</td></tr>
+      <tr><td>2 glasses milk</td><td class="num">~325</td><td class="num">~16 g</td></tr>
+      <tr class="total"><td>Total</td><td class="num">~1,665</td><td class="num">~104 g</td></tr>
+    </table>
+    <div class="info-text" style="margin-top:8px;">Based on cooked-roti weight (40&ndash;50 g). If those rotis are made from 40&ndash;50 g of <i>dry atta</i> each, add ~400 kcal. To know for sure: weigh your total dry atta for the day &times; 3.4 = roti calories.</div>
+  </div>
+
+  <div class="grid2">
+    <div class="info-card" style="border-top:2px solid #1D9E75;border-radius:0 0 var(--border-radius-md) var(--border-radius-md);">
+      <div class="info-title">Calorie target</div>
+      <div class="info-text"><b>~2,600 kcal/day</b><br>Desk-job maintenance ~2,350 + ~250 surplus. Slow gain = mostly muscle.</div>
+    </div>
+    <div class="info-card" style="border-top:2px solid #534AB7;border-radius:0 0 var(--border-radius-md) var(--border-radius-md);">
+      <div class="info-title">Protein target</div>
+      <div class="info-text"><b>120&ndash;130 g/day</b><br>You&apos;re at ~100 g &mdash; bump it ~25 g. (1.8&ndash;2.0 g per kg.)</div>
+    </div>
+  </div>
+
+  <div class="info-card" style="border-left:2px solid #0C447C;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;">
+    <div class="info-title">Desk job &mdash; two ways to play it</div>
+    <div class="info-text" style="line-height:1.75;">You sit most of the day, so your NEAT (everyday movement) is low &mdash; that&apos;s why maintenance is ~2,350, not higher.<br>
+      <b>Option A &mdash; keep steps low:</b> eat to <b>~2,600</b>. Simplest.<br>
+      <b>Option B (recommended) &mdash; add 7&ndash;8k steps/day:</b> maintenance rises, so you can eat closer to <b>~2,750</b> &mdash; more food, better recovery, stays leaner, and it breaks up the sitting that aggravates your tailbone.</div>
+  </div>
+
+  <div class="info-card">
+    <div class="info-title">How to add the missing ~900 kcal</div>
+    <table class="dtable">
+      <tr><th>Add this</th><th class="num">Calories</th><th class="num">Protein</th></tr>
+      <tr><td>Mass shake (see recipe below)</td><td class="num">~500</td><td class="num">~32 g</td></tr>
+      <tr><td>Bowl of dal / rajma / chole, daily</td><td class="num">~180</td><td class="num">~9 g</td></tr>
+      <tr><td>1 bowl rice (even on roti days)</td><td class="num">~200</td><td class="num">~4 g</td></tr>
+      <tr><td>1 tbsp ghee on rotis / dal</td><td class="num">~110</td><td class="num">0 g</td></tr>
+      <tr><td>Handful of almonds / peanuts</td><td class="num">~120</td><td class="num">~4 g</td></tr>
+      <tr><td>Curd or 100 g paneer</td><td class="num">~150&ndash;265</td><td class="num">~11&ndash;18 g</td></tr>
+    </table>
+  </div>
+
+  <div class="info-card" style="border-left:2px solid #B5731A;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;">
+    <div class="info-title">Mass shake &mdash; your biggest weapon</div>
+    <div class="info-text" style="margin-bottom:6px;">Calories you can <i>drink</i> when you&apos;re too full to chew. This is how lean/light guys grow.</div>
+    <ul class="recipe">
+      <li><div class="dot" style="background:#B5731A;"></div><b>1 scoop whey</b> &mdash; ~24 g protein</li>
+      <li><div class="dot" style="background:#B5731A;"></div><b>1 banana</b></li>
+      <li><div class="dot" style="background:#B5731A;"></div><b>2 tbsp peanut butter</b></li>
+      <li><div class="dot" style="background:#B5731A;"></div><b>250 ml milk</b> (or water)</li>
+      <li><div class="dot" style="background:#B5731A;"></div><b>+ handful oats</b> (optional, for extra calories)</li>
+    </ul>
+    <div class="info-text" style="margin-top:6px;"><b>= ~450&ndash;550 kcal, ~32 g protein.</b> Drink 1 between meals, daily.</div>
+  </div>
+
+  <div class="info-card">
+    <div class="info-title">Sample bulk day (~2,700 kcal &middot; ~135 g protein)</div>
+    <table class="dtable">
+      <tr><th>Meal</th><th class="num">Calories</th><th class="num">Protein</th></tr>
+      <tr><td>8 rotis + 1 tbsp ghee</td><td class="num">~900</td><td class="num">~27 g</td></tr>
+      <tr><td>6 eggs</td><td class="num">~430</td><td class="num">~38 g</td></tr>
+      <tr><td>1 bowl dal + 1 bowl rice</td><td class="num">~380</td><td class="num">~13 g</td></tr>
+      <tr><td>2 glasses milk</td><td class="num">~325</td><td class="num">~16 g</td></tr>
+      <tr><td>Mass shake</td><td class="num">~420</td><td class="num">~33 g</td></tr>
+      <tr><td>Almonds + 1 bowl curd</td><td class="num">~220</td><td class="num">~8 g</td></tr>
+      <tr class="total"><td>Total</td><td class="num">~2,675</td><td class="num">~135 g</td></tr>
+    </table>
+  </div>
+
+  <div class="grid2">
+    <div class="info-card">
+      <div class="info-title">Ramp up &mdash; don&apos;t jump</div>
+      <div class="info-text">Going 1,700 &rarr; 2,700 overnight will wreck your stomach. Add the shake + dal this week (~+600), then add the rest over 1&ndash;2 weeks as appetite adjusts.</div>
+    </div>
+    <div class="info-card">
+      <div class="info-title">The scale is the truth</div>
+      <div class="info-text">Weigh each morning, use the weekly average. Aim +0.25&ndash;0.5 kg/month. Flat for 2 weeks &rarr; add ~150 kcal. Gaining too fast &rarr; trim ~150.</div>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <div class="info-title">Don&apos;t forget</div>
+    <div class="rule-item"><div class="dot" style="background:#1D9E75;"></div>Add veg / salad and fruit daily &mdash; your current diet is low on fiber and micros, and you&apos;ll be eating a lot more now</div>
+    <div class="rule-item"><div class="dot" style="background:#1D9E75;"></div>3+ litres of water a day</div>
+    <div class="rule-item"><div class="dot" style="background:#1D9E75;"></div>Hit the target <i>every</i> day &mdash; the low-roti days are where bulks stall</div>
+  </div>
+
+  <div class="info-card" style="background:var(--color-background-secondary);border:none;">
+    <div class="info-text">Note: these are estimates, and I&apos;m not a dietitian &mdash; but the direction is certain. You are under-eating for your goal. Eat more, track the scale, adjust.</div>
+  </div>
+`;
+
+const missedHTML = `
+  <div class="info-card">
+    <div class="info-title">The golden rule &mdash; shift, never skip</div>
+    <div class="info-text">Your PPL is a 6-session cycle, not a Mon&ndash;Sat calendar. When you miss a day, push everything forward. The cycle always completes, just on different days.</div>
+  </div>
+  <div class="grid2">
+    <div class="info-card">
+      <div class="info-title">Miss 1 day</div>
+      <div class="info-text">Do it the next day. Compress remaining sessions into the week. Never skip the missed session entirely.</div>
+    </div>
+    <div class="info-card">
+      <div class="info-title">Miss 2+ days in a row</div>
+      <div class="info-text">Pick up exactly where you left off. Don&apos;t try to cram missed sessions &mdash; just restart from the next session in the cycle.</div>
+    </div>
+    <div class="info-card">
+      <div class="info-title">Miss a leg day specifically</div>
+      <div class="info-text">Never skip both leg days in one week. If you must skip one, always do the other. Two missed leg days in a row = a full week without leg training.</div>
+    </div>
+    <div class="info-card">
+      <div class="info-title">Week went totally sideways</div>
+      <div class="info-text">Reset Monday. Don&apos;t stress. One bad week in months of training has near-zero impact. Consistency over weeks beats perfection over days.</div>
+    </div>
+  </div>
+  <div class="info-card" style="border-left:2px solid #534AB7;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;">
+    <div class="info-title">The mindset that actually works</div>
+    <div class="info-text">Missing a session is not failing. Quitting because you missed a session is. The people who make the best progress aren&apos;t the ones who never miss &mdash; they&apos;re the ones who always show back up.</div>
+  </div>
+`;
+
+const cardioHTML = `
+  <div class="info-card">
+    <div class="info-title">Do you even need cardio at 14% body fat?</div>
+    <div class="info-text">Not hard cardio &mdash; you&apos;re lean and in a surplus, the goal is building, not burning. But because you have a <b>desk job</b>, daily <b>walking/steps matter a lot</b>: not to create a deficit, but to raise your maintenance (so you can eat more &amp; stay leaner), aid recovery, improve insulin sensitivity, and break up the sitting that feeds your tailbone pain.</div>
+  </div>
+
+  <div class="info-card" style="border-left:2px solid #0C447C;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;">
+    <div class="info-title">Your #1 cardio priority: a step target</div>
+    <div class="info-text">Aim for <b>7&ndash;8k steps/day.</b> Desk job = low NEAT, so this is the single most useful thing you can add &mdash; it lets you eat ~150 more kcal/day while staying lean, and gets you off your tailbone. Stand and move 1&ndash;2 min every 30&ndash;60 min too.</div>
+  </div>
+  <div class="grid2">
+    <div class="info-card" style="border-top:2px solid #1D9E75;border-radius:0 0 var(--border-radius-md) var(--border-radius-md);">
+      <div class="info-title" style="color:#085041;">Do this</div>
+      <div class="rule-item"><div class="dot" style="background:#1D9E75;"></div>Hit 7&ndash;8k steps/day &mdash; your top priority with a desk job</div>
+      <div class="rule-item"><div class="dot" style="background:#1D9E75;"></div>After-dinner walk 10&ndash;15 min &mdash; digestion + insulin sensitivity</div>
+      <div class="rule-item"><div class="dot" style="background:#1D9E75;"></div>Stand &amp; move 1&ndash;2 min every 30&ndash;60 min at your desk (tailbone + posture)</div>
+      <div class="rule-item"><div class="dot" style="background:#1D9E75;"></div>Optional 10&ndash;15 min LISS (incline walk / easy cycle) after push or pull days</div>
+    </div>
+    <div class="info-card" style="border-top:2px solid #E24B4A;border-radius:0 0 var(--border-radius-md) var(--border-radius-md);">
+      <div class="info-title" style="color:#791F1F;">Avoid this</div>
+      <div class="rule-item"><div class="dot" style="background:#E24B4A;"></div>Cardio on or the day after leg days &mdash; legs need that recovery</div>
+      <div class="rule-item"><div class="dot" style="background:#E24B4A;"></div>HIIT / intense intervals &mdash; too much CNS fatigue stacked on 6-day PPL</div>
+      <div class="rule-item"><div class="dot" style="background:#E24B4A;"></div>Long runs (5k+) &mdash; burns the surplus you need to build muscle</div>
+      <div class="rule-item"><div class="dot" style="background:#E24B4A;"></div>Fasted, exhausting cardio that kills your gym performance</div>
+    </div>
+  </div>
+  <div class="info-card">
+    <div class="info-title">Best cardio days for your split</div>
+    <div class="info-text" style="line-height:2;">
+      Push A &mdash; <b style="color:#1D9E75;">OK</b> light cardio after, legs are fresh<br>
+      Pull A &mdash; <b style="color:#1D9E75;">OK</b> light cardio after, legs are fresh<br>
+      Legs A &mdash; <b style="color:#E24B4A;">No</b> let the legs recover<br>
+      Push B &mdash; <b style="color:#1D9E75;">OK</b> light cardio after<br>
+      Pull B &mdash; <b style="color:#1D9E75;">OK</b> light cardio after<br>
+      Legs B &mdash; <b style="color:#E24B4A;">No</b><br>
+      Rest day &mdash; <b style="color:#1D9E75;">OK</b> easy walk only
+    </div>
+  </div>
+`;
+
+const days = [
+  {
+    label:"Day 1", name:"Push A", type:"push",
+    muscles:"Chest &middot; Delts &middot; Triceps &middot; Abs",
+    color:"#EEEDFE", tc:"#3C3489", badge:"Push",
+    note:"Compounds now run RPE 7&ndash;8 (2&ndash;3 reps in reserve) so you recover across 6 days. Triceps long + lateral head here; coverage completes on Push B. Hanging leg raise added for lower abs &mdash; hanging means zero tailbone contact.",
+    exercises:[
+      {name:"Barbell bench press", muscle:"Chest primary", sets:"4&times;6&ndash;8", rpe:"RPE 7&ndash;8"},
+      {name:"Incline DB press", muscle:"Upper chest", sets:"3&times;8&ndash;10", rpe:"RPE 8"},
+      {name:"High-to-low cable fly", muscle:"Lower chest", sets:"3&times;12&ndash;15", rpe:"RPE 9"},
+      {name:"Overhead press", muscle:"Front &amp; side delts", sets:"3&times;8&ndash;10", rpe:"RPE 7&ndash;8"},
+      {name:"Cable lateral raise", muscle:"Side delts", sets:"4&times;12&ndash;15", rpe:"RPE 9"},
+      {name:"Skull crushers (bar)", muscle:"Triceps long head", sets:"3&times;10&ndash;12", rpe:"RPE 8"},
+      {name:"Tricep rope pushdown", muscle:"Triceps lateral head", sets:"2&times;12&ndash;15", rpe:"RPE 9"},
+      {name:"Hanging leg raise", muscle:"Lower abs", sets:"3&times;12&ndash;15", rpe:"RPE 9", tag:"added", tagType:"add"},
+    ]
+  },
+  {
+    label:"Day 2", name:"Pull A", type:"pull",
+    muscles:"Back &middot; Biceps &middot; Forearms &middot; Rear delts",
+    color:"#E1F5EE", tc:"#085041", badge:"Pull",
+    note:"Biceps doubled &mdash; barbell (mass) + incline (long-head stretch) at two angles. Reverse curl adds direct forearm work on top of all the grip your pulls already demand. Face pulls stay &mdash; non-negotiable with 4 pressing sessions a week.",
+    exercises:[
+      {name:"Deadlift", muscle:"Posterior chain primary", sets:"3&times;5&ndash;6", rpe:"RPE 7&ndash;8"},
+      {name:"Pull-ups / lat pulldown", muscle:"Lats, biceps", sets:"4&times;6&ndash;10", rpe:"RPE 8"},
+      {name:"T-bar row", muscle:"Mid back, rhomboids", sets:"3&times;8&ndash;10", rpe:"RPE 7&ndash;8"},
+      {name:"Seated cable row", muscle:"Lats, mid back", sets:"3&times;10&ndash;12", rpe:"RPE 8"},
+      {name:"Face pulls", muscle:"Rear delts + rotator cuff", sets:"3&times;15", rpe:"RPE 8", tag:"keep &mdash; important", tagType:"keep"},
+      {name:"Barbell curl", muscle:"Biceps overall", sets:"3&times;8&ndash;12", rpe:"RPE 9"},
+      {name:"Incline DB curl", muscle:"Biceps long head", sets:"3&times;10&ndash;12", rpe:"RPE 9&ndash;10", tag:"added", tagType:"add"},
+      {name:"Reverse curl (EZ bar)", muscle:"Brachioradialis + forearms", sets:"3&times;12&ndash;15", rpe:"RPE 9", tag:"added", tagType:"add"},
+    ]
+  },
+  {
+    label:"Day 3", name:"Legs A", type:"legs",
+    muscles:"Quads &middot; Hams &middot; Glutes &middot; Calves",
+    color:"#FAEEDA", tc:"#633806", badge:"Legs &middot; Quad focus",
+    note:"WITHOUT lunges (your default): single-leg leg press or box step-ups &mdash; zero tailbone load. WITH lunges: swap #5 for reverse lunges (DB/Smith), gentler than walking lunges. Seated leg curl replaces standing (your gym only has seated). Two hinges a week now (deadlift + RDL) &mdash; sumo dropped to spare your lower back.",
+    exercises:[
+      {name:"Smith machine squat", muscle:"Quads, glutes", sets:"4&times;6&ndash;8", rpe:"RPE 7&ndash;8"},
+      {name:"Leg press (feet mid/low)", muscle:"Quads", sets:"3&times;10&ndash;12", rpe:"RPE 8"},
+      {name:"Seated leg extension", muscle:"Quad isolation", sets:"3&times;12&ndash;15", rpe:"RPE 9"},
+      {name:"Seated leg curl", muscle:"Hamstrings", sets:"3&times;10&ndash;12", rpe:"RPE 8&ndash;9", tag:"swapped", tagType:"swap"},
+      {name:"Single-leg leg press", muscle:"Quads/glutes &mdash; unilateral, tailbone-safe", sets:"3&times;10 each", rpe:"RPE 8", tag:"no-lunge", tagType:"swap"},
+      {name:"Calf raise (leg-press)", muscle:"Gastrocnemius", sets:"4&times;12&ndash;20", rpe:"RPE 9"},
+    ]
+  },
+  {
+    label:"Day 4", name:"Push B", type:"push",
+    muscles:"Chest &middot; Delts &middot; Triceps &middot; Abs",
+    color:"#EEEDFE", tc:"#3C3489", badge:"Push",
+    note:"Full tricep coverage here &mdash; close-grip (all heads), overhead ext (long head), dips (lateral + medial). Cable crunch added and weighted &mdash; load it like any lift, that&apos;s what builds visible abs. Kneeling keeps the tailbone safe.",
+    exercises:[
+      {name:"Incline barbell press", muscle:"Upper chest, front delts", sets:"4&times;8&ndash;10", rpe:"RPE 7&ndash;8"},
+      {name:"Cable fly / pec deck", muscle:"Chest stretch focus", sets:"3&times;12&ndash;15", rpe:"RPE 9"},
+      {name:"DB lateral raise", muscle:"Side delts", sets:"4&times;12&ndash;15", rpe:"RPE 9"},
+      {name:"Arnold press", muscle:"All 3 delt heads", sets:"3&times;10&ndash;12", rpe:"RPE 8"},
+      {name:"Close-grip bench press", muscle:"Triceps all heads", sets:"3&times;8&ndash;10", rpe:"RPE 7&ndash;8"},
+      {name:"Cable overhead tricep ext.", muscle:"Long head &mdash; biggest part", sets:"3&times;10&ndash;12", rpe:"RPE 9"},
+      {name:"Dips", muscle:"Triceps lateral + medial", sets:"3&times;8&ndash;12", rpe:"RPE 8"},
+      {name:"Cable crunch (weighted)", muscle:"Abs &mdash; overall rectus", sets:"3&times;12&ndash;15", rpe:"RPE 9", tag:"added", tagType:"add"},
+    ]
+  },
+  {
+    label:"Day 5", name:"Pull B", type:"pull",
+    muscles:"Back &middot; Biceps &middot; Forearms &middot; Traps",
+    color:"#E1F5EE", tc:"#085041", badge:"Pull",
+    note:"Second biceps angle added (short head) so across the week you hit all four: barbell, incline, hammer, preacher. Wrist curls finish the forearms (flexors + extensors). Superset the arm moves to keep the session tight. Weighted pull-up stays parked until you own bodyweight pull-ups.",
+    exercises:[
+      {name:"Lat pulldown (heavy)", muscle:"Lats, biceps", sets:"4&times;6&ndash;10", rpe:"RPE 8", tag:"replaces weighted pull-up", tagType:"swap"},
+      {name:"T-bar / chest-supported row", muscle:"Mid back, traps", sets:"4&times;8&ndash;10", rpe:"RPE 7&ndash;8"},
+      {name:"Single-arm DB row", muscle:"Lats, rhomboids", sets:"3&times;10 each", rpe:"RPE 8"},
+      {name:"Reverse cable fly", muscle:"Rear delts", sets:"3&times;15", rpe:"RPE 9"},
+      {name:"DB shrug", muscle:"Upper traps", sets:"3&times;12&ndash;15", rpe:"RPE 9"},
+      {name:"Hammer curl", muscle:"Biceps + brachialis", sets:"3&times;10&ndash;12", rpe:"RPE 9"},
+      {name:"Preacher / cable curl", muscle:"Biceps short head", sets:"3&times;12&ndash;15", rpe:"RPE 9&ndash;10", tag:"added", tagType:"add"},
+      {name:"Wrist curls (+ reverse)", muscle:"Forearm flexors + extensors", sets:"3&times;15&ndash;20", rpe:"RPE 9", tag:"added", tagType:"add"},
+    ]
+  },
+  {
+    label:"Day 6", name:"Legs B", type:"legs",
+    muscles:"Glutes &middot; Quads &middot; Hams &middot; Calves",
+    color:"#FAEEDA", tc:"#633806", badge:"Legs &middot; Posterior focus",
+    note:"Posterior/glute-focused to balance the quad emphasis of Legs A. Hip thrust stays &mdash; best glute builder and the pressure point differs from lunges, so try it first. Sumo removed (RDL covers the hinge; three deadlift variations a week was too much lower-back fatigue). Want a unilateral here too? Add box step-ups 3&times;10 each &mdash; tailbone-safe.",
+    exercises:[
+      {name:"Romanian deadlift", muscle:"Hamstrings, glutes", sets:"3&times;8&ndash;10", rpe:"RPE 7&ndash;8"},
+      {name:"Smith machine squat", muscle:"Quads, glutes", sets:"4&times;8&ndash;10", rpe:"RPE 8"},
+      {name:"Seated leg curl", muscle:"Hamstrings", sets:"3&times;12&ndash;15", rpe:"RPE 9", tag:"swapped", tagType:"swap"},
+      {name:"Leg press (feet high &amp; wide)", muscle:"Glutes, hams", sets:"3&times;12&ndash;15", rpe:"RPE 8"},
+      {name:"Hip thrust", muscle:"Glutes primary &mdash; keep this", sets:"4&times;10&ndash;12", rpe:"RPE 9", tag:"keep &mdash; important", tagType:"keep"},
+      {name:"Seated calf raise", muscle:"Soleus", sets:"4&times;15&ndash;20", rpe:"RPE 9"},
+    ]
+  },
+  { label:"How to run it", html:howToRunHTML },
+  { label:"Nutrition", html:nutritionHTML },
+  { label:"Your diet", html:dietHTML },
+  { label:"Missed days", html:missedHTML },
+  { label:"Cardio", html:cardioHTML },
+];
+
+const tabsEl = document.getElementById("tabs");
+const panelsEl = document.getElementById("panels");
+const tagColors = {swap:"tag-swap", keep:"tag-keep", add:"tag-add"};
+const rowClassMap = {swap:" changed", keep:" kept", add:" added"};
+const barbellSVG = (c)=>`<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8v8M8 6v12M16 6v12M20 8v8M8 12h8"/></svg>`;
+
+days.forEach((d,i)=>{
+  const btn = document.createElement("button");
+  btn.className = "tab"+(i===0?" active":"");
+  btn.textContent = d.label;
+  btn.onclick = ()=>{
+    document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("p"+i).classList.add("active");
+  };
+  tabsEl.appendChild(btn);
+
+  const panel = document.createElement("div");
+  panel.className = "panel"+(i===0?" active":"");
+  panel.id = "p"+i;
+
+  if(d.html){ panel.innerHTML = d.html; panelsEl.appendChild(panel); return; }
+
+  panel.innerHTML = `
+    <div class="day-card">
+      <div class="day-header">
+        <div class="day-icon" style="background:${d.color};">${barbellSVG(d.tc)}</div>
+        <div><div class="day-title">${d.name}</div><div class="day-sub">${d.muscles}</div></div>
+        <span class="badge" style="background:${d.color};color:${d.tc};">${d.badge}</span>
+      </div>
+      <div class="col-header">
+        <span class="col-h">Exercise</span>
+        <span class="col-h" style="text-align:center;">Sets &times; reps</span>
+        <span class="col-h" style="text-align:right;">Effort</span>
+      </div>
+      ${d.exercises.map(e=>{
+        const rc = e.tag ? (rowClassMap[e.tagType] || ' changed') : '';
+        return `
+        <div class="ex-row${rc}">
+          <div>
+            <div class="ex-name">${e.name}${e.tag?`<span class="tag ${tagColors[e.tagType]||'tag-swap'}">${e.tag}</span>`:''}</div>
+            <div class="ex-muscle">${e.muscle}</div>
+          </div>
+          <div class="ex-sets">${e.sets}</div>
+          <div><span class="ex-rpe">${e.rpe}</span></div>
+        </div>`;
+      }).join("")}
+    </div>
+    ${d.note?`<p class="note">${d.note}</p>`:''}
+  `;
+  panelsEl.appendChild(panel);
+});
+</script>
+</body>
+</html>

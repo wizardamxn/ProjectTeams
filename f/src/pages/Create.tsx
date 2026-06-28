@@ -66,7 +66,7 @@ export default function Create() {
     if (!content.trim()) return toast.error("Write some content first");
     try {
       setGeneratingTags(true);
-      const response = await api.post("/generate-tags", { content });
+      const response = await api.post("/api/ai/generate-tags", { content });
       const generatedTags = response.data.tags || [];
       setTags([...new Set([...tags, ...generatedTags])]);
       toast.success("Tags generated");
@@ -82,7 +82,7 @@ export default function Create() {
     try {
       setSummarizing(true);
       const response = await api.post(
-        "/summarize",
+        "/api/ai/summarize",
         { content },
         { withCredentials: true },
       );
@@ -100,7 +100,7 @@ export default function Create() {
     if (!content.trim()) return toast.error("Write some content first");
     try {
       setImproving(true);
-      const response = await api.post("/improve-writing", { content });
+      const response = await api.post("/api/ai/improve-writing", { content });
       setContent(response.data.improvedContent || content);
       toast.success("Writing improved");
     } catch (error: any) {
@@ -125,7 +125,7 @@ export default function Create() {
         tags,
         starred: false,
       };
-      const response = await axios.post(`${backendURL}/create`, documentData, {
+      const response = await axios.post(`${backendURL}/api/doc/create`, documentData, {
         withCredentials: true,
       });
       toast.success("Document created");
