@@ -21,13 +21,14 @@ const app = express();
 app.use(cookieParser());
 app.use(
   cors({
-   origin: [
-    "http://13.60.201.119",
-    "http://localhost:8080",
-    "http://localhost:8081",
-    "http://localhost:5173",
-    "http://localhost:4173",
-  ],
+    // Production is same-origin (nginx proxies /api), so no public origin is
+    // needed here. These are for local dev (frontend hitting the backend directly).
+    origin: [
+      "http://localhost:8080",
+      "http://localhost:8081",
+      "http://localhost:5173",
+      "http://localhost:4173",
+    ],
     credentials: true,
   })
 );
