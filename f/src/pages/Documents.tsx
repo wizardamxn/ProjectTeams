@@ -56,7 +56,7 @@ export default function Documents() {
     const fetchDocuments = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${backendURL}/teamdocs`, {
+        const response = await axios.get(`${backendURL}/api/doc/teamdocs`, {
           withCredentials: true,
         });
         setDocuments(response.data);
@@ -79,7 +79,7 @@ export default function Documents() {
         ),
       );
       await axios.put(
-        `${backendURL}/star/${doc_id}`,
+        `${backendURL}/api/doc/star/${doc_id}`,
         {},
         { withCredentials: true },
       );
@@ -109,7 +109,7 @@ export default function Documents() {
     if (!confirm("Delete this document?")) return;
 
     try {
-      await axios.delete(`${backendURL}/teamdocs/${id}`, {
+      await axios.delete(`${backendURL}/api/doc/teamdocs/${id}`, {
         withCredentials: true,
       });
       setDocuments(documents.filter((doc) => doc._id !== id));

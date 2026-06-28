@@ -3,6 +3,7 @@ import express from "express";
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
 import authorised from "../middlewares/authorised.js"; // Note: ESM often requires .js extensions
+import { searchChunks } from "../utils/searchChunks.js";
 
 const aiRouter = express.Router();
 
@@ -107,6 +108,51 @@ aiRouter.post("/improve-writing", async (req, res) => {
   } catch (err) {
     console.error("Grammar error:", err);
     return res.status(500).json({ error: "Failed to improve grammar." });
+  }
+});
+
+// ==========================================
+// 4. ASK DOCS API (RAG)
+// ==========================================
+aiRouter.post("/ask-docs", authorised, async (req, res) => {
+  try {
+    const { question } = req.body;
+    if (!question) return res.status(400).json({ error: "Missing question" });
+
+    const teamId = req.user.teamCode;
+    const chunks = await searchChunks(question, teamId, 5);
+
+    if (chunks.length === 0) {
+      return res.json({
+        answer: "I don't have any documents to answer that from yet.",
+        sources: [],
+      });
+    }
+
+    const context = chunks
+      .map((chunk, i) => `[${i + 1}] ${chunk.text}`)
+      .join("\n\n");
+
+    const answer = await useAI({
+      model,
+      prompt: `Context:\n${context}\n\nQuestion: ${question}`,
+      system: `
+        You are a helpful assistant that answers questions using ONLY the provided context.
+        If the answer cannot be found in the context, say you don't know. Do not use outside knowledge.
+        Cite the context number(s) you used, e.g. "[1]".
+      `,
+    });
+
+    return res.json({
+      answer,
+      sources: chunks.map((chunk) => ({
+        documentId: chunk.documentId,
+        score: chunk.score,
+      })),
+    });
+  } catch (err) {
+    console.error("Ask-docs error:", err);
+    return res.status(500).json({ error: "Failed to answer question." });
   }
 });
 

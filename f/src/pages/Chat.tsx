@@ -66,7 +66,7 @@ export default function Chat() {
   useEffect(() => {
     const fetchTeamMembers = async () => {
       try {
-        const res = await axios.get(`${backendURL}/teammembers`, {
+        const res = await axios.get(`${backendURL}/api/profile/teammembers`, {
           withCredentials: true,
         });
         setTeamMembers(res.data);
@@ -187,7 +187,7 @@ export const ChatMember = () => {
       try {
         // 3. LOGIC FIX: Await history FIRST
         const res = await axios.get(
-          `${backendURL}/chat/${userId}/${targetUserId}`,
+          `${backendURL}/api/chat/chat/${userId}/${targetUserId}`,
           { withCredentials: true }
         );
         

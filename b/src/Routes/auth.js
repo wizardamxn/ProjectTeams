@@ -88,6 +88,37 @@ authRouter.post("/register", async (req, res) => {
 });
 
 
+/* ================= RESET PASSWORD ================= */
+// No email infrastructure exists in this app, so password reset is verified
+// via email + teamCode (the same "shared secret" used to join a team at signup)
+// instead of an emailed token.
+authRouter.post("/reset-password", async (req, res) => {
+  try {
+    const { email, teamCode, newPassword } = req.body;
+
+    if (!email || !teamCode || !newPassword) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase(), teamCode });
+    if (!user) {
+      return res.status(404).json({ message: "No account found with that email and team code" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.status(200).json({ message: "Password reset successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 /* ================= LOGOUT ================= */
 authRouter.post("/logout", (req, res) => {
   res.cookie("token", null, {

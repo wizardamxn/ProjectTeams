@@ -1,10 +1,11 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
-import { UserPlus, Mail, Trash2, Crown, User, Loader2, X, Shield } from "lucide-react";
+import { UserPlus, Copy, Check, Trash2, Crown, User, Loader2, X, Shield } from "lucide-react";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "sonner";
+import { useSelector } from "react-redux";
 
 // --- Types ---
 interface TeamMember {
@@ -17,17 +18,17 @@ interface TeamMember {
 
 export default function Team() {
   const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const teamCode = useSelector((store: any) => store?.user?.user?.teamCode);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [sendingInvite, setSendingInvite] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const fetchMembers = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`${backendURL}/teammembers`, {
+        const res = await axios.get(`${backendURL}/api/profile/teammembers`, {
             withCredentials: true
         });
         setMembers(res.data);
@@ -42,22 +43,15 @@ export default function Team() {
     fetchMembers();
   }, []);
 
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if(!inviteEmail) return;
-
+  const handleCopyCode = async () => {
+    if (!teamCode) return;
     try {
-        setSendingInvite(true);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000)); 
-        
-        toast.success(`Invitation sent to ${inviteEmail}`);
-        setInviteEmail("");
-        setShowInviteModal(false);
+      await navigator.clipboard.writeText(teamCode);
+      setCopied(true);
+      toast.success("Team code copied");
+      setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-        toast.error("Failed to send invitation");
-    } finally {
-        setSendingInvite(false);
+      toast.error("Failed to copy code");
     }
   };
 
@@ -183,52 +177,41 @@ export default function Team() {
                 </div>
                 <h2 className="text-lg font-semibold text-white">Invite Team Member</h2>
                 <p className="text-sm text-zinc-400 mt-1">
-                  Enter email address to invite a colleague.
+                  Share this code — your teammate enters it on the signup page to join your team.
                 </p>
               </div>
 
-              <form onSubmit={handleInvite}>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">
-                        Email Address
-                    </label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500" />
-                      <input
-                        type="email"
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-600 rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-all"
-                        placeholder="colleague@company.com"
-                        required
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowInviteModal(false)}
-                      className="flex-1 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={sendingInvite}
-                      className="flex-1 px-4 py-2 bg-zinc-100 hover:bg-white text-zinc-950 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {sendingInvite ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                          "Send Invite"
-                      )}
-                    </button>
-                  </div>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3">
+                  <span className="font-mono text-lg tracking-widest text-white">
+                    {teamCode || "--------"}
+                  </span>
+                  <button
+                    onClick={handleCopyCode}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 rounded-md text-xs font-medium transition-colors"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        Copy
+                      </>
+                    )}
+                  </button>
                 </div>
-              </form>
+
+                <button
+                  type="button"
+                  onClick={() => setShowInviteModal(false)}
+                  className="w-full px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Done
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

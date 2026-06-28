@@ -8,6 +8,7 @@ const navItems = [
   { icon: FileText, label: "Documents", path: "/documents" },
   { icon: MessageSquare, label: "Chat", path: "/chat" },
   { icon: Users, label: "Team", path: "/team" },
+  { icon: Database, label: "RAG Docs", path: "/rag-docs" },
 ];
 
 export const Sidebar = () => {

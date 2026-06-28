@@ -46,12 +46,12 @@ export default function Signup() {
 
     try {
       const res = await axios.post(
-        `${backendURL}/register`,
+        `${backendURL}/api/auth/register`,
         { fullName, email, password, teamCode },
         { withCredentials: true },
       );
 
-      const me = await axios.get(`${backendURL}/profile`, {
+      const me = await axios.get(`${backendURL}/api/profile/profile`, {
         withCredentials: true,
       });
 

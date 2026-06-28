@@ -62,14 +62,23 @@ docRouter.get('/doc/:doc_id', authorised, async (req, res) => {
 docRouter.put('/edit/:doc_id', authorised, async (req, res) => {
   try {
     const _id = req.params.doc_id;
-    const result = await Document.updateOne({ _id }, req.body);
+    const existingDoc = await Document.findById(_id);
 
-    if (result.matchedCount === 0) {
+    if (!existingDoc) {
       return res.status(404).send("Document not found");
     }
 
-    const updatedDoc = await Document.findById(_id);
-    res.send(updatedDoc);
+    if (req.body.content !== undefined && req.body.content !== existingDoc.content) {
+      existingDoc.versions.push({
+        content: existingDoc.content,
+        updatedAt: existingDoc.updatedAt,
+      });
+    }
+
+    Object.assign(existingDoc, req.body);
+    await existingDoc.save();
+
+    res.send(existingDoc);
   } catch (err) {
     console.error(err);
     res.status(500).send("Error updating document");
@@ -101,6 +110,22 @@ docRouter.put('/star/:doc_id', authorised, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send("Can't update the document");
+  }
+});
+
+docRouter.delete('/teamdocs/:doc_id', authorised, async (req, res) => {
+  try {
+    const { doc_id } = req.params;
+    const { user } = req;
+
+    const doc = await Document.findOne({ _id: doc_id, teamId: user.teamCode });
+    if (!doc) return res.status(404).send("Document not found");
+
+    await doc.deleteOne();
+    res.status(200).json({ message: "Document deleted" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error deleting document");
   }
 });
 
