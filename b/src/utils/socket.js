@@ -7,8 +7,8 @@ const onlineUsers = new Map();
 const initializeSocket = (server) => {
   const io = new Server(server, {
     cors: {
+      // Production is same-origin (nginx proxies /socket.io); these cover local dev.
       origin: [
-        "http://13.60.201.119",
         "http://localhost:8080",
         "http://localhost:5173",
         "http://localhost:2222",

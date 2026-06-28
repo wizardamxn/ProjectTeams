@@ -4,6 +4,17 @@ import User from "../models/user.js";
 
 const authRouter = express.Router();
 
+// Shared cookie options so login, register, and logout never drift apart.
+// Same-origin deployment => SameSite=Lax (also works cross-port in local dev).
+// `secure` is decoupled from NODE_ENV: a Secure cookie is silently dropped over
+// plain HTTP, so flip COOKIE_SECURE=true only once HTTPS is terminating in front.
+const cookieOptions = {
+  httpOnly: true,
+  sameSite: "lax",
+  secure: process.env.COOKIE_SECURE === "true",
+  maxAge: 60 * 60 * 60 * 60 * 1000, // 1 hour
+};
+
 /* ================= LOGIN ================= */
 authRouter.post("/login", async (req, res) => {
   try {
@@ -21,12 +32,12 @@ authRouter.post("/login", async (req, res) => {
 
     const jwtToken = user.getJwtToken();
 
-    res.cookie("token", jwtToken, {
-      maxAge: 60 * 60 * 1000,
-      httpOnly: true,
-    });
+    res.cookie("token", jwtToken, cookieOptions);
 
-    res.status(200).json(user);
+    // Never ship the password hash back to the client.
+    const safeUser = user.toObject();
+    delete safeUser.password;
+    res.status(200).json(safeUser);
   } catch (err) {
     res.status(500).send("ERROR: " + err.message);
   }
@@ -65,13 +76,9 @@ authRouter.post("/register", async (req, res) => {
     // 5. Generate JWT
     const jwtToken = user.getJwtToken();
 
-    // 6. Secure cookie settings (IMPORTANT)
-    res.cookie("token", jwtToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 60 * 60 * 1000, // 1 hour
-    });
+    // 6. Set auth cookie (same options as login — see cookieOptions above)
+    res.cookie("token", jwtToken, cookieOptions);
+
 
     res.status(201).json({ message: "User registered successfully" });
 
@@ -121,10 +128,11 @@ authRouter.post("/reset-password", async (req, res) => {
 
 /* ================= LOGOUT ================= */
 authRouter.post("/logout", (req, res) => {
-  res.cookie("token", null, {
-    expires: new Date(Date.now()),
+  // Clear with attributes matching how it was set, or the browser keeps it.
+  res.clearCookie("token", {
     httpOnly: true,
-    secure: true,
+    sameSite: "lax",
+    secure: process.env.COOKIE_SECURE === "true",
   });
 
   res.send("Logged out successfully");
