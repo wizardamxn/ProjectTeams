@@ -1,22 +1,24 @@
 # Portfolio Case Study: Project Teams
 
 ### 1. METADATA HEADER
-* **Project Name:** **Project Teams** — A high-fidelity, real-time collaboration platform designed to merge instant messaging, collaborative document editing, active presence tracking, and LLM-assisted semantic tagging into a unified, secure workspace.
+* **Project Name:** **Project Teams** — A high-fidelity, real-time collaboration platform that merges instant messaging, collaborative document editing, active presence tracking, LLM-assisted authoring, and a retrieval-augmented (RAG) document Q&A engine into a unified, secure, multi-tenant workspace.
 * **Links/Metadata:**
-  * **Status:** COMPLETED
-  * **Source Code:** [GitHub Repository](https://github.com/wizardamxn/project-teams.git)
-  * **Live Demo:** [Amazon EC2 Instance](http://13.60.201.119)
+  * **Status:** LIVE IN PRODUCTION
+  * **Source Code:** [GitHub Repository](https://github.com/wizardamxn/projectteams)
+  * **Live Demo:** [projectteams.amanahmad.xyz](https://projectteams.amanahmad.xyz)
   * **Role:** Principal Full-Stack Engineer / Architect
   * **Team Size:** 1 (Solo Developer)
 * **Stack:**
   * **Languages:** TypeScript, JavaScript (ES6+ ESM Node.js)
   * **Frameworks:** React.js (Vite SPA client), Express.js (REST & Socket.IO server)
   * **Real-Time Engine:** Socket.IO (WebSockets TCP), WebRTC (In-progress video signaling)
-  * **AI/ML Integration:** Vercel AI SDK, `@ai-sdk/google` (Inference powered by `gemini-2.5-flash`)
-  * **Databases:** MongoDB (via Mongoose ODM)
+  * **AI/ML Integration:** Vercel AI SDK, `@ai-sdk/google` — `gemini-2.5-flash` (generation) and `gemini-embedding-001` (embeddings)
+  * **Retrieval / Vector Layer:** MongoDB Atlas Vector Search (`$vectorSearch`), cosine similarity over team-scoped embeddings
+  * **Async Pipeline:** BullMQ job queue on Redis, with a dedicated standalone worker process
+  * **Databases & Storage:** MongoDB (via Mongoose ODM), Supabase Storage (object/blob persistence)
   * **State Management:** Redux Toolkit (Thunk-driven socket orchestration)
   * **Styling & UI:** Tailwind CSS, Framer Motion, Lucide React, Sonner
-  * **Infrastructure & Tooling:** Docker, Docker Compose, Cookie-Parser, Axios
+  * **Infrastructure & Delivery:** AWS EC2, PM2 (process orchestration), Nginx (reverse proxy / same-origin gateway), Cloudflare (DNS, edge proxy, TLS), Let's Encrypt (origin TLS), Docker (local dev parity)
 
 ---
 
@@ -41,147 +43,124 @@
   * *Hurdle:* The editor auto-saves changes every 30 seconds. However, if a user clicks the "Save" button manually while an automated save is already in-flight, race conditions could cause out-of-order writes in MongoDB, leading to data loss or overwriting newer edits with stale cached states.
   * *Insight:* Implemented a client-side saving state locking mechanism (`saving` flag) that disables redundant manual trigger clicks. Under the hood, MongoDB uses `Document.updateOne({ _id }, req.body)` with Mongoose middleware tracking updates. Additionally, built-in version control arrays (`versions`) capture historical snapshots to enable rolling back in the event of write collisions.
 
+* **Challenge 6: Event-Loop Starvation from Synchronous Document Ingestion**
+  * *Hurdle:* The RAG feature requires parsing uploaded PDFs, splitting them into hundreds of chunks, and generating a vector embedding for every chunk. Performing this inline within the HTTP request handler blocked Node's single-threaded event loop for tens of seconds per document — stalling chat sockets, freezing concurrent API calls, and risking gateway timeouts on large files.
+  * *Insight:* Decoupled ingestion into an asynchronous pipeline using **BullMQ on Redis**. The upload endpoint persists the file to Supabase Storage, writes a `RagDocument` record (`ragStatus: "uploaded"`), and the `/ragify` endpoint merely enqueues a `process-document` job before returning `202 Accepted`. A **dedicated standalone worker process** (`worker.js`, run as a separate PM2 app) consumes the queue, streams the document down, parses it with `pdf-parse`, chunks it (1,000 chars, 150 overlap sliding window), batch-embeds via `embedMany`, and persists chunks — driving the document through an `uploaded → processing → ready | failed` state machine the UI can poll. The API gateway never blocks.
+
+* **Challenge 7: Cross-Tenant Leakage Risk at the Vector Retrieval Layer**
+  * *Hurdle:* Semantic search returns the *nearest* vectors by cosine similarity — which, in a shared multi-tenant collection, could surface another team's confidential document chunks if similarity alone drove retrieval. Application-level filtering *after* the search is both leaky and wasteful.
+  * *Insight:* Pushed tenant isolation **into the ANN search itself**. The `$vectorSearch` stage carries a `filter: { teamId }` predicate against a MongoDB Atlas vector index (`rag_chunk_vector_index`), so candidate generation is constrained to the requesting team's namespace before scoring. The grounded answer prompt then instructs `gemini-2.5-flash` to use *only* the retrieved context and to cite chunk numbers, eliminating both data leakage and model hallucination.
+
+* **Challenge 8: Production Cutover — From Docker-Dev to a Same-Origin Edge Deployment**
+  * *Hurdle:* The app was developed against a Docker Compose dev stack (live-reload dev servers, cross-origin `localhost` ports, hardcoded EC2 IP in CORS). Promoting that verbatim to production broke auth: cross-site cookies were dropped, the SPA's API base URL double-prefixed `/api/api/...`, the WebSocket URL was undefined, and a raw HTTP IP exposed credentials in cleartext.
+  * *Insight:* Re-architected the deployment to a **single same-origin topology**. Nginx serves the built Vite bundle and reverse-proxies `/api` and `/socket.io` to the Node backend on loopback — so the browser only ever talks to one origin, collapsing the cross-site cookie and double-prefix problems. Auth cookies were unified behind a single `cookieOptions` (httpOnly, `SameSite=Lax`, `secure` gated by a `COOKIE_SECURE` env flag rather than `NODE_ENV`). PM2 supervises the API and worker as independent processes (with `SIGTERM` job draining), and Cloudflare + Let's Encrypt terminate TLS at the edge and origin (`Full (strict)`).
+
 ---
 
 ### 3. OVERVIEW
-*Project Teams* is a high-performance, real-time collaboration ecosystem designed to merge messaging, digital workspaces, and LLM-assisted document management into a single unified workspace. At the heart of the system is a dynamic, high-throughput document processing pipeline. When a team member creates a document, the system initiates an ingestion pipeline that handles text content, strips extraneous formatting, and persists raw documents to MongoDB. Users can dynamically execute three distinct asynchronous operations on any document using the integrated AI Assistant panel: semantic tag extraction, text summarization, and tone/grammar improvement. The user experience is designed as a dark-mode, high-fidelity single-page application (SPA) featuring smooth transitions, optimistic UI updates, and instant socket-driven messaging.
+*Project Teams* is a high-performance, real-time collaboration ecosystem that merges messaging, collaborative digital workspaces, LLM-assisted authoring, and a retrieval-augmented document intelligence layer into a single unified workspace. Beyond live chat and co-editing, the platform lets a team **upload its own documents and then ask questions against them in natural language** — answers are grounded strictly in the team's own corpus and returned with source citations. Users can also invoke three synchronous AI authoring operations on any document via the integrated assistant panel: semantic tag extraction, text summarization, and tone/grammar refinement. The user experience is a dark-mode, high-fidelity single-page application (SPA) featuring smooth transitions, optimistic UI updates, and instant socket-driven messaging.
 
-The platform utilizes a decoupled, containerized multi-service topology orchestrated via Docker Compose. The architecture comprises a React-based client layer running as a Vite-bundled static web app, which communicates with a monolithic Node.js/Express backend service acting as the primary API Gateway and Backend-For-Frontend (BFF). Communication between client and backend is split: standard CRUD operations, authentication, and heavy AI completions are routed over stateless HTTPS REST endpoints utilizing JSON payloads, while real-time chat, network presence, and online indicators are established over persistent stateful TCP connections utilizing WebSockets (Socket.IO client/server). Database operations are handled by Mongoose interfacing with a scalable MongoDB cluster, ensuring low-latency JSON serialization.
+Architecturally, the system is a decoupled, multi-process topology. A React/Vite SPA is served as static assets by Nginx, which also acts as the same-origin API gateway — reverse-proxying REST traffic and WebSocket upgrades to a monolithic Node.js/Express Backend-For-Frontend (BFF). Communication is split by workload: stateless CRUD, authentication, and synchronous AI completions travel over HTTPS REST, while real-time chat and presence ride persistent Socket.IO TCP connections. The heavy, CPU-bound RAG ingestion path is offloaded entirely to a **separate BullMQ/Redis worker process**, keeping the request-serving gateway responsive. Structured data lives in MongoDB (via Mongoose), raw document blobs in Supabase Storage, and vector embeddings in a MongoDB Atlas vector index. The whole stack runs on AWS EC2 under PM2, fronted by Cloudflare with Let's Encrypt TLS.
 
 ---
 
 ### 4. KEY FEATURES
-* **Real-Time Instant Messaging Engine:** Built on Socket.IO running over stateful TCP WebSockets. Explicit client-to-server payload format mapping `senderId`, `senderName`, `targetUserId`, and `text` properties. Dynamic namespace allocation using sorted participant IDs (`[userId, targetUserId].sort()`) combined with MongoDB query matching (`$all`) to dynamically resolve or instantiate isolated chat records. Event-driven message broadcasts ensure low-latency (sub-50ms) message propagation.
-* **Live User Presence Monitoring:** Built using a stateful, thread-safe memory mapping system (`onlineUsers` Map) instantiated on the backend runtime. Upon client socket connection, the client fires an `isOnline` event containing the user's UUID, mapping the user's ID to their active `socket.id`. Client queries presence asynchronously via `checkOnlineStatus` callbacks, which returns a boolean state in `O(1)` time from the memory map. Auto-cleanup lifecycle listens for socket `disconnect` events, iterating and pruning the map in-place to prevent memory leaks from dead connections.
-* **AI-Assisted Document Processing (Core AI Pipeline):** Powered by the Vercel AI SDK (`ai` package) utilizing the `gemini-2.5-flash` model. Semantic Tag Extraction processes text content to extract 5–7 contextual keywords returned as structured JSON arrays of strings. Intelligent Document Summarization generates concise, bold-emphasized summaries restricted strictly to a two-sentence length limit to fit screen metadata spaces. Writing & Grammar Refinement improves sentence flow and grammar through dedicated system instructions while retaining the author's original semantic intent.
-* **Document Lifecycle & Auto-Save Daemon:** Implemented as an asynchronous, debounced client-side hook running every 30,000ms (30 seconds) on editor changes. Document updates are routed to a non-blocking `PUT /edit/:doc_id` endpoint. Utilizes Mongoose models with strict schema definitions (Title limit of 100 characters, Content limit of 5,000 characters). Auto-save is designed as a "silent save" using React component states, which updates the saving status indicator without triggering obstructive toast notifications.
-* **Session Security & Cookie Isolation:** Built on JSON Web Tokens (JWT) signed with HMAC SHA-256 (`process.env.JWT_KEY`) and set to expire in 1 hour. Cookies are isolated utilizing `httpOnly: true`, preventing client-side Cross-Site Scripting (XSS) scripts from accessing tokens. Dynamically checks `process.env.NODE_ENV` to append `secure: true` and `sameSite: "none"` flags in production environments. Middleware interception: every REST route and socket auth handshake is protected by an `authorized` middleware executing token decryption and user lookup (`select("-password")`).
-* **Team Collaboration & Partitioning:** Implemented an 8-character workspace partitioning key (`teamCode`) assigned to users during registration. Documents are queried using `{ teamId: teamCode }` or `{ teamId: teamCode, starred: true }` to isolate and protect tenant workspaces. Active Directory queries retrieve team members inside the same code boundary via `User.find({ teamCode, _id: { $ne: activeUser } })` while selectively returning only safe properties (`fullName`, `email`).
+* **Retrieval-Augmented Document Q&A (RAG):** Teams upload documents (PDF / text), "ragify" them, and then query their corpus in plain language via `POST /api/ai/ask-docs`. The question is embedded with `gemini-embedding-001`, matched against the team's chunks using MongoDB Atlas `$vectorSearch` (top-5, `numCandidates = limit × 10`, `teamId`-filtered), assembled into a numbered context window, and answered by `gemini-2.5-flash` under a strict "use only the provided context and cite your sources" system instruction. Responses return both the answer and a `sources` array (`documentId`, similarity `score`).
+* **Asynchronous Document Ingestion Pipeline:** A BullMQ `rag-processing` queue on Redis decouples ingestion from the API. A standalone worker downloads the blob from Supabase, extracts text (`pdf-parse` for PDFs, UTF-8 decode for text), applies a sliding-window chunker (1,000-char windows, 150-char overlap), batch-embeds chunks via the Vercel AI SDK's `embedMany`, and bulk-inserts `RagChunk` documents — all while advancing a persisted `ragStatus` state machine (`uploaded → processing → ready → failed`) the client can poll.
+* **Real-Time Instant Messaging Engine:** Built on Socket.IO over stateful TCP WebSockets. Explicit payload mapping of `senderId`, `senderName`, `targetUserId`, and `text`. Dynamic room allocation using sorted participant IDs (`[userId, targetUserId].sort()`) combined with MongoDB `$all` matching to resolve or instantiate isolated chat records. Event-driven broadcasts deliver sub-50ms message propagation.
+* **Live User Presence Monitoring:** A stateful in-memory map (`onlineUsers`) on the backend runtime maps each user's ID to their active `socket.id` on an `isOnline` event. Clients query presence via `checkOnlineStatus` callbacks returning a boolean in `O(1)`. A `disconnect` lifecycle listener prunes the map in place to prevent leaks from dead connections.
+* **AI-Assisted Authoring Suite:** Powered by the Vercel AI SDK and `gemini-2.5-flash`. Semantic Tag Extraction returns 5–7 contextual keywords as a structured JSON array; Intelligent Summarization yields a concise, two-sentence, bold-emphasized digest; Writing & Grammar Refinement improves flow and correctness while preserving authorial intent.
+* **Document Lifecycle & Auto-Save Daemon:** A debounced client hook fires every 30s on editor changes to a non-blocking `PUT /edit/:doc_id` endpoint. Strict Mongoose schema limits (Title ≤ 100, Content ≤ 5,000 chars) and a "silent save" status indicator avoid obstructive toasts; `versions` snapshots enable rollback.
+* **Session Security & Multi-Tenant Partitioning:** JWT (HMAC SHA-256, 1-hour expiry) carried in `httpOnly` cookies with unified `SameSite=Lax` / env-gated `Secure` options. An `authorized` middleware guards every REST route and socket handshake (decrypt token → user lookup with `select("-password")`). An 8-character `teamCode` partitions every query — documents, chats, RAG corpora, and even vector retrieval — preventing cross-tenant data leaks.
 
 ---
 
 ### 5. ARCHITECTURE
 ```
+                              ┌───────────────────────────┐
+   Browser  ───────────────▶  │   Cloudflare (DNS / proxy │
+                              │   / edge TLS, Full strict) │
+                              └─────────────┬──────────────┘
+                                            │  (HTTPS, origin)
+                                            v
 +-------------------------------------------------------------------------+
-|                              CLIENT LAYER                               |
-|                     Vite + React SPA (Tailwind CSS)                    |
-|                        Redux Toolkit State Store                        |
-+-------------------+---------------------------------+-------------------+
-                    |                                 |
-           HTTP/HTTPS Requests                  WebSocket Events
-        (Axios / JSON Payloads)              (Socket.IO TCP Protocol)
-                    |                                 |
-                    v                                 v
-+-------------------+---------------------------------+-------------------+
-|                            BACKEND SERVICES                             |
-|                    Node.js + Express API Gateway / BFF                  |
-|        Auth Router | Doc Router | Profile Router | Chat Router | AI Router  |
-+---------+-------------------+-------------------+-----------------+-----+
-          |                   |                   |                 |
-     Middleware            Socket.IO          Mongoose         Vercel AI
-    (Cookie Auth)        Presence Map        ODM Engine           SDK
-          |                   |                   |                 |
-          v                   v                   v                 v
-+---------+-------------------+-------------------+-----------------+-----+
-|                                DATA STORES                              |
-|                       MongoDB Database Instance / Cluster               |
-|            [Users Collection] | [Chats Collection] | [Docs Collection]   |
-+-------------------------------------+-----------------------------------+
-                                      |
-                                  API Calls
-                            (gemini-2.5-flash API)
-                                      |
-                                      v
-+-------------------------------------+-----------------------------------+
-|                              EXTERNAL APIS                              |
-|                   Google Gemini AI Cloud Inference API                   |
+|                    AWS EC2  ·  Nginx (same-origin gateway)              |
+|     serves Vite SPA (static)  |  proxies /api  +  /socket.io  ──▶ :2222 |
++-----------------------------------------+-------------------------------+
+                                          | (loopback)
+                                          v
 +-------------------------------------------------------------------------+
+|        PM2 process: "pt-api"  ·  Node.js + Express BFF / API Gateway    |
+|   Auth | Doc | Profile | Chat (Socket.IO) | AI | Upload routers         |
++----------+------------------+------------------+-----------------+-------+
+           |                  |                  |                 |
+       Mongoose           Supabase           BullMQ.add()      Vercel AI SDK
+       (Mongo)         (blob storage)     (rag-processing)    (gemini-2.5-flash)
+           |                  |                  |                 |
+           v                  v                  v                 v
++----------+------------------+----------+   +---+----------------------------+
+|   MongoDB (Atlas)                       |  |        Redis  (job queue)       |
+|  Users | Docs | Chats | RagDocs |       |  +---------------+-----------------+
+|  RagChunks  +  Vector Index            |                  |
++----------+------------------------------+                  v
+           ^                              +-------------------------------------+
+           |  $vectorSearch (teamId)      |  PM2 process: "pt-worker" (BullMQ)  |
+           +------------------------------┤  download → pdf-parse → chunk →     |
+                                          │  embed (gemini-embedding-001) →     |
+                                          │  insert RagChunks → status: ready   |
+                                          +-------------------------------------+
 ```
 
 ---
 
-### 6. WORKFLOWS (INGESTION & QUERY FLOWS)
+### 6. WORKFLOWS
 
-#### Ingestion Flow
-1. **Client Action:** The client fills in document title and text in the `Create.tsx` workspace editor page, optionally invoking AI processing.
-2. **AI Enrichment (Optional):**
-   * User triggers "Summarize" or "Generate Tags".
-   * Client issues a `POST /summarize` or `POST /generate-tags` request.
-   * The BFF redirects the request to the `useAI` wrapper utility, instantiating a Vercel AI SDK session with `gemini-2.5-flash`.
-   * The model streams/returns semantic tags or summarized content.
-   * Client stores AI outputs in local component states (`tags`, `summary`).
-3. **Commit & Save:** The user clicks the "Save" button (or auto-save kicks in). Client fires `POST /create` containing: `{ title, content, summary, tags, starred }`.
-4. **Middleware Validation:** The Express backend intercepts the request, runs `authorized.js` middleware, reads `req.cookies.token`, decrypts JWT payload, fetches the active user document from MongoDB (excluding password hash), and appends it to `req.user`.
-5. **Database Persistence:** The route handler extracts workspace metadata (`teamCode`), initializes a new `Document` model, and issues a Mongoose `document.save()` call.
-6. **Confirmation:** The server returns a `201 Created` status with the persisted document object, and the client navigates to `/editor/:doc_id` to establish the document's unique resource path.
+#### Document Authoring & Ingestion Flow
+1. **Client Action:** The user fills in document title and text in the `Create.tsx` editor, optionally invoking AI assist.
+2. **AI Enrichment (Optional):** "Summarize" / "Generate Tags" issue `POST /summarize` or `POST /generate-tags`; the BFF runs the `useAI` wrapper against `gemini-2.5-flash`, and outputs are stored in local component state.
+3. **Commit & Save:** "Save" (or auto-save) fires `POST /create` with `{ title, content, summary, tags, starred }`.
+4. **Middleware Validation:** `authorized.js` reads `req.cookies.token`, decrypts the JWT, loads the user (excluding password hash) into `req.user`.
+5. **Persistence:** The handler extracts `teamCode`, builds a `Document` model, and `save()`s it; a `201 Created` returns the document and the client routes to `/editor/:doc_id`.
 
-#### Query Flow
-1. **Client Entry:** A user logs into the dashboard or selects the "Documents" tab. The client dispatches an API request.
-2. **Workspace Isolation Routing:** The client fires a `GET /teamdocs` request.
-3. **Authentication Handshake:** Backend intercepts with `authorized` middleware, decrypting the JWT and verifying the user.
-4. **DB Query Execution:** The handler extracts `req.user.teamCode` and executes a query: `Document.find({ teamId: teamCode })`.
-5. **Serialization:** Mongoose resolves document models, parses the schema fields, and formats them into a JSON payload sent back to the client.
-6. **Chat Connection Query Flow:**
-   * User navigates to `Chat.tsx` and selects a team member.
-   * React dispatches a clear operation `setHistory([])` to clean the viewport.
-   * Client sends an Axios request `GET /chat/:userId/:targetUserId`.
-   * Backend calls `findOrCreateChat(userId, targetUserId)`. It sorts the IDs (`[userId, targetUserId].sort()`) and checks the `Chats` collection using `{ participants: { $all: participants } }`.
-   * If not found, it inserts a new chat document. If found, it fetches the chat with all messages in the array.
-   * Once history is resolved, the client joins the Socket.IO room via `joinChat` socket event, and updates the local Redux store with the message history array.
-   * Real-time messages are broadcast to the room, appending to the database chat array on the fly.
+#### RAG Ingestion Flow (Asynchronous)
+1. **Upload:** Client `POST /api/upload/document` (Multer, in-memory, 20MB cap). The controller streams the buffer to **Supabase Storage** at `${teamId}/${timestamp}-${filename}` and writes a `RagDocument` (`ragStatus: "uploaded"`).
+2. **Enqueue:** Client `POST /api/upload/document/:id/ragify`. The endpoint guards against re-processing, enqueues a BullMQ `process-document` job (`{ documentId, storagePath, mimeType }`), and returns `202 Accepted` immediately.
+3. **Worker Pickup:** The standalone `pt-worker` process consumes the job, flips status to `processing`, and downloads the blob from Supabase.
+4. **Extract → Chunk → Embed:** Text is extracted (`pdf-parse` / UTF-8), split into overlapping 1,000-char chunks, and batch-embedded with `gemini-embedding-001`.
+5. **Persist & Finalize:** Chunks (`documentId`, `teamId`, `chunkIndex`, `text`, `embedding`) are `insertMany`-ed into `RagChunk`; status advances to `ready` (or `failed` on error, captured by the worker's `failed` listener).
+
+#### RAG Query Flow (Ask-Docs)
+1. **Ask:** Client `POST /api/ai/ask-docs` with `{ question }` (auth-guarded).
+2. **Embed & Retrieve:** The question is embedded, then `searchChunks` runs `$vectorSearch` with `filter: { teamId }` — returning the top-5 nearest chunks *scoped to the requesting team* with similarity scores.
+3. **Ground & Generate:** Retrieved chunks form a numbered context block; `gemini-2.5-flash` answers under a strict grounded-only, cite-your-sources system prompt.
+4. **Respond:** The API returns `{ answer, sources: [{ documentId, score }] }`; if no chunks match, it returns a graceful "no documents yet" fallback.
+
+#### Chat Connection Query Flow
+* On selecting a member, the client clears state (`setHistory([])`), fetches `GET /chat/:userId/:targetUserId`; the backend's `findOrCreateChat` sorts IDs and matches `{ participants: { $all: [...] } }`, creating the chat if absent. After history resolves, the client joins the Socket.IO room (`joinChat`) and real-time messages append to the room's embedded array on the fly.
 
 ---
 
 ### 7. DATA MODEL
-The application relies on three primary data collections within the MongoDB instance, modeled and validated through Mongoose:
+Modeled and validated through Mongoose across the MongoDB instance:
 
 #### 1. `users` Collection
-* **Role:** Represents authenticated team members, defining credentials, cryptographic salts, and their workspace bounds.
-* **Scope:** Global authentication, team indexing.
-* **Constraints & Relationships:**
-  * `_id`: UUID/Mongoose ObjectId acting as the Primary Key.
-  * `fullName`: String, length constrained between `[4, 50]`, required.
-  * `email`: String, unique index, lowercase, trimmed, validated via `validator.isEmail` rule.
-  * `password`: String, salted & hashed using Bcrypt (10 rounds), verified with standard complexity rules.
-  * `teamCode`: String, exact length 8, required. Used as the core partitioning key matching other users in the workspace.
-  * `createdAt` and `updatedAt`: Automatic ISO timestamps.
+* `_id` (ObjectId PK) · `fullName` (String, `[4,50]`, required) · `email` (unique, lowercase, `validator.isEmail`) · `password` (Bcrypt, 10 rounds) · `teamCode` (String, length 8 — the tenant partition key) · `createdAt`/`updatedAt`.
 
 #### 2. `documents` Collection
-* **Role:** Stores document headers, markdown content body, and AI metadata (summaries/tags) generated during ingestion.
-* **Scope:** Workspace collaboration repository.
-* **Constraints & Relationships:**
-  * `_id`: Mongoose ObjectId Primary Key.
-  - `title`: String, length [1, 100], required.
-  - `content`: String, length [1, 5000], required.
-  - `summary`: String, optional. Populated via AI summarization pipeline.
-  - `tags`: Array of Strings. Populated via AI keyword generator.
-  - `createdBy`: MongoDB ObjectID, referencing `User._id` (Owner).
-  - `teamId`: String, maps to the owner's `teamCode` to define the tenant barrier.
-  - `author`: Embedded document containing:
-    - `name`: String, required.
-    - `avatar`: String, optional.
-    - *Isolation Choice:* `_id: false` set on the sub-schema to prevent automatic ID generation overhead.
-  - `starred`: Boolean, defaults to `false`.
-  - `versions`: Subdocument array capturing content snapshots. Each version contains:
-    - `content`: String.
-    - `updatedAt`: Date, defaults to `Date.now`.
-  - `createdAt` / `updatedAt`: Automatic ISO timestamps.
+* `_id` · `title` (`[1,100]`) · `content` (`[1,5000]`) · `summary` (AI) · `tags` (String[], AI) · `createdBy` (→ `User._id`) · `teamId` (→ `teamCode`) · `author` (embedded `{ name, avatar }`, `_id:false`) · `starred` (Bool) · `versions` (snapshot array `{ content, updatedAt }`) · timestamps.
 
 #### 3. `chats` Collection
-* **Role:** Manages the messaging channel history between pair-wise team members.
-* **Scope:** Peer-to-peer real-time communication messages.
-* **Constraints & Relationships:**
-  * `_id`: Mongoose ObjectId Primary Key.
-  * `participants`: Array of MongoDB ObjectIDs referencing the `User` collection.
-  * `messages`: Embedded array of `messageSchema` objects (retaining messages within the chat room document for performance reasons).
-  * **Embedded `messageSchema`:**
-    * `_id`: MongoDB ObjectID.
-    * `senderId`: MongoDB ObjectID referencing `User`, required.
-    * `senderName`: String, required.
-    * `text`: String, required.
-    * `createdAt` / `updatedAt`: Automatic ISO timestamps.
+* `_id` · `participants` (ObjectId[] → `User`) · `messages` (embedded `messageSchema`: `senderId`, `senderName`, `text`, timestamps).
+
+#### 4. `ragDocuments` Collection *(new)*
+* **Role:** Metadata + lifecycle state for each uploaded source document.
+* `_id` · `fileName` · `fileUrl` (Supabase public URL) · `storagePath` (bucket key) · `mimeType` · `fileSize` · `teamId` (tenant scope) · `uploadedBy` (→ `User._id`) · `ragStatus` (enum: `uploaded | processing | ready | failed`, default `uploaded`) · timestamps.
+
+#### 5. `ragChunks` Collection *(new)*
+* **Role:** Vector-searchable, team-scoped fragments of an ingested document.
+* `_id` · `documentId` (→ `RagDocument`, indexed) · `teamId` (filter key for tenant-isolated retrieval) · `chunkIndex` (Number) · `text` (String) · `embedding` (`Number[]` — indexed by the Atlas `rag_chunk_vector_index` for `$vectorSearch`) · timestamps.
 
 ---
 
 ### 8. OUTCOME
-*Project Teams* establishes a solid blueprint for secure, low-latency collaboration by enforcing rigorous architectural boundaries. By decoupling the presentation layer from backend APIs, the platform guarantees high horizontal scalability. Every document query and socket connection is filtered through strict workspace boundaries (`teamCode`), preventing cross-tenant data leaks. Secure, httpOnly cookie-based JWT sessions mitigate standard client-side security risks, while the integration of the Vercel AI SDK and Google Gemini guarantees cost-effective, non-blocking metadata generation. Through real-time Socket.IO presence mapping and atomic Mongoose data persistence, *Project Teams* ensures state synchronization, high performance, and high availability, marking it as an elite, production-grade enterprise collaboration platform.
+*Project Teams* is a **live, production-grade** collaboration platform that pairs low-latency real-time messaging with a genuinely useful document-intelligence layer. By decoupling CPU-bound ingestion onto a BullMQ/Redis worker, the API gateway stays responsive under load while documents are parsed, chunked, and embedded out of band. By pushing `teamCode` isolation all the way down into the `$vectorSearch` candidate-generation stage, every layer — REST queries, sockets, and semantic retrieval — respects strict tenant boundaries, and grounded, citation-backed LLM answers eliminate hallucination. The same-origin Nginx gateway, PM2 process supervision, and Cloudflare + Let's Encrypt TLS turn a Docker-dev prototype into a hardened, HTTPS-served deployment on AWS EC2 — demonstrating end-to-end ownership from real-time systems design through RAG architecture to operating the stack in production.

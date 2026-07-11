@@ -12,7 +12,7 @@ import {
   PenTool,
   X,
   ChevronRight,
-} from "lucide-react";
+} from "@/components/icons";
 import { useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
@@ -139,17 +139,11 @@ export default function Create() {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans selection:bg-zinc-800">
-      <div className="max-w-[1920px] mx-auto min-h-screen flex flex-col">
-        {/* Navbar */}
-
-        <div className="flex flex-1 overflow-hidden h-[calc(100vh-64px)]">
-          {/* 1. Global Navigation (Left) */}
-
-          {/* 2. Main Editor (Center) */}
-          <main className="flex-1 flex flex-col relative min-w-0 bg-[#09090b]">
+    <div className="flex min-h-[calc(100dvh-7rem)] overflow-hidden rounded-2xl border border-white/[0.06] bg-zinc-950 text-zinc-100 md:min-h-[calc(100dvh-4rem)]">
+      {/* Main Editor (Center) */}
+      <main className="relative flex min-w-0 flex-1 flex-col bg-zinc-950">
             {/* Toolbar */}
-            <div className="h-14 border-b border-zinc-800 flex items-center justify-between px-6 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-20">
+            <div className="h-14 border-b border-white/[0.06] flex items-center justify-between px-6 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-20">
               <div className="flex items-center gap-2 text-sm text-zinc-500">
                 <span>Documents</span>
                 <ChevronRight className="w-4 h-4" />
@@ -171,7 +165,7 @@ export default function Create() {
                   whileTap={{ scale: 0.98 }}
                   onClick={handleSave}
                   disabled={saving}
-                  className="bg-zinc-100 text-zinc-950 px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50"
                 >
                   {saving ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -307,8 +301,6 @@ export default function Create() {
               </p>
             </div>
           </aside>
-        </div>
-      </div>
     </div>
   );
 }

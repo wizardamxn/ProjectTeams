@@ -9,6 +9,7 @@ import {
   Outlet,
 } from "react-router-dom";
 import { useEffect } from "react";
+import { Loader2 } from "@/components/icons";
 import { useDispatch, useSelector } from "react-redux";
 import { addUser, checkAuth } from "./store/slices/User";
 import axios from "axios";
@@ -16,6 +17,7 @@ import { listenToMessages } from "./store/slices/SocketThunks";
 
 // --- Components & Pages ---
 import Layout from "./components/Layout"; // Make sure you created this file!
+import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -35,7 +37,7 @@ const queryClient = new QueryClient();
 
 const router = createBrowserRouter([
   // --- Public Routes (No Sidebar/Navbar) ---
-  { path: "/", element: <Navigate to="/login" replace /> },
+  { path: "/", element: <Landing /> },
   { path: "/login", element: <Login /> },
   { path: "/signup", element: <Signup /> },
   { path: "/forgot-password", element: <ForgotPassword /> },
@@ -89,7 +91,14 @@ const App = () => {
   }, [user, dispatch]);
 
   if (isAuthChecking) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-zinc-950">
+        <span className="text-lg font-bold tracking-tight text-white">
+          Project Teams
+        </span>
+        <Loader2 className="h-5 w-5 animate-spin text-zinc-600" />
+      </div>
+    );
   }
   return (
     <QueryClientProvider client={queryClient}>

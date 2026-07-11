@@ -1,19 +1,28 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Navbar } from "@/components/Navbar";
-import { Sidebar } from "@/components/Sidebar";
-import { UserPlus, Copy, Check, Trash2, Crown, User, Loader2, X, Shield } from "lucide-react";
+import {
+  UserPlus,
+  Copy,
+  Check,
+  Trash2,
+  User,
+  Loader2,
+  X,
+  Shield,
+} from "@/components/icons";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { useSelector } from "react-redux";
+import { WobbleCard } from "@/components/ace/wobble-card";
+import { AnimatedTooltip, type TooltipItem } from "@/components/ace/animated-tooltip";
+import { HoverBorderGradient } from "@/components/ace/hover-border-gradient";
 
-// --- Types ---
 interface TeamMember {
   _id: string;
   fullName: string;
   email: string;
-  role?: "admin" | "member"; 
-  joinedDate?: string;      
+  role?: "admin" | "member";
+  joinedDate?: string;
 }
 
 export default function Team() {
@@ -29,7 +38,7 @@ export default function Team() {
       try {
         setLoading(true);
         const res = await axios.get(`${backendURL}/api/profile/teammembers`, {
-            withCredentials: true
+          withCredentials: true,
         });
         setMembers(res.data);
       } catch (error) {
@@ -39,7 +48,6 @@ export default function Team() {
         setLoading(false);
       }
     };
-
     fetchMembers();
   }, []);
 
@@ -57,160 +65,167 @@ export default function Team() {
 
   if (loading) {
     return (
-        <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
-        </div>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
+      </div>
     );
   }
 
+  const avatarItems: TooltipItem[] = members.slice(0, 8).map((m) => ({
+    id: m._id,
+    name: m.fullName,
+    designation: m.email,
+    initials: m.fullName?.charAt(0),
+  }));
+
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans selection:bg-zinc-800">
-      {/* FIX: Added `p-4` here to match Dashboard layout. 
-         This ensures the Navbar and Sidebar align perfectly with other pages.
-      */}
-      <div className="max-w-[1600px] mx-auto p-4 min-h-screen flex flex-col">
-        
-        {/* Navbar */}
-       
-
-        {/* FIX: Removed `p-4 md:p-0` from here. 
-           The gap and margin now match the parent container flow.
-        */}
-        <div className="flex flex-1 gap-6 min-h-0 mt-4">
-         
-          <main className="flex-1 w-full">
-            
-            {/* --- Header --- */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-              <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-white">Team Management</h1>
-                <p className="text-sm text-zinc-400 mt-1">
-                  Manage members, roles, and pending invitations.
-                </p>
-              </div>
-              
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setShowInviteModal(true)}
-                className="bg-zinc-100 hover:bg-white text-zinc-950 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 shadow-sm transition-colors whitespace-nowrap"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>Invite Member</span>
-              </motion.button>
-            </div>
-
-            {/* --- Members Grid --- */}
-            {members.length === 0 ? (
-                 <div className="flex flex-col items-center justify-center py-20 bg-zinc-900/30 border border-dashed border-zinc-800 rounded-xl">
-                    <User className="w-12 h-12 text-zinc-700 mb-4" />
-                    <p className="text-zinc-500">No team members found.</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {members.map((member) => (
-                    <div 
-                        key={member._id}
-                        className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5 hover:bg-zinc-900 transition-colors group"
-                    >
-                    <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300 font-semibold">
-                                {member.fullName.charAt(0)}
-                            </div>
-                            <div className="min-w-0">
-                                <h3 className="font-medium text-zinc-200 truncate max-w-[150px]">
-                                    {member.fullName}
-                                </h3>
-                                <p className="text-xs text-zinc-500 truncate max-w-[150px]">
-                                    {member.email}
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-800 text-zinc-400 border border-zinc-700 uppercase tracking-wide">
-                            Member
-                        </span>
-                    </div>
-
-                    <div className="pt-4 border-t border-zinc-800/50 flex items-center justify-between">
-                        <span className="text-xs text-zinc-600 flex items-center gap-1.5">
-                            <Shield className="w-3 h-3" />
-                            Active
-                        </span>
-                        
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                            <button className="p-1.5 hover:bg-red-500/10 text-zinc-500 hover:text-red-400 rounded transition-colors" title="Remove Member">
-                                <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                        </div>
-                    </div>
-                    </div>
-                ))}
-                </div>
-            )}
-            
-          </main>
+    <div className="mx-auto max-w-6xl">
+      {/* --- Header --- */}
+      <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <div>
+          <span className="text-sm font-semibold uppercase tracking-widest text-emerald-500">
+            Your people
+          </span>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-white">
+            Team Management
+          </h1>
+          <div className="mt-4 flex items-center gap-4">
+            {avatarItems.length > 0 && <AnimatedTooltip items={avatarItems} />}
+            <span className="text-sm text-zinc-500">
+              {members.length} {members.length === 1 ? "member" : "members"}
+            </span>
+          </div>
         </div>
+
+        <button onClick={() => setShowInviteModal(true)}>
+          <HoverBorderGradient className="px-4 py-2.5 text-sm font-semibold">
+            <span className="flex items-center gap-2">
+              <UserPlus className="h-4 w-4" /> Invite Member
+            </span>
+          </HoverBorderGradient>
+        </button>
       </div>
+
+      {/* --- Members Grid --- */}
+      {members.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-zinc-900/30 py-20">
+          <User className="mb-4 h-12 w-12 text-zinc-700" />
+          <p className="text-zinc-500">No team members found.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {members.map((member, i) => (
+            <motion.div
+              key={member._id}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04 }}
+            >
+              <WobbleCard containerClassName="h-full">
+                <div className="group flex h-full flex-col">
+                  <div className="mb-4 flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/80 to-teal-600/80 font-semibold text-white">
+                        {member.fullName.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="max-w-[150px] truncate font-medium text-zinc-100">
+                          {member.fullName}
+                        </h3>
+                        <p className="max-w-[150px] truncate text-xs text-zinc-500">
+                          {member.email}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="rounded border border-emerald-500/20 bg-emerald-500/[0.06] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-300/80">
+                      Member
+                    </span>
+                  </div>
+
+                  <div className="mt-auto flex items-center justify-between border-t border-white/[0.06] pt-4">
+                    <span className="flex items-center gap-1.5 text-xs text-zinc-500">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                      <Shield className="h-3 w-3" />
+                      Active
+                    </span>
+                    <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <button
+                        className="rounded p-1.5 text-zinc-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                        title="Remove Member"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </WobbleCard>
+            </motion.div>
+          ))}
+        </div>
+      )}
 
       {/* --- Invite Modal --- */}
       <AnimatePresence>
         {showInviteModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#09090b] border border-zinc-800 rounded-xl p-6 max-w-md w-full shadow-2xl relative"
+              className="relative w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 p-6 shadow-2xl"
             >
-                <button 
-                    onClick={() => setShowInviteModal(false)}
-                    className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors"
-                >
-                    <X className="w-4 h-4" />
-                </button>
+              <button
+                onClick={() => setShowInviteModal(false)}
+                className="absolute right-4 top-4 z-10 text-zinc-500 transition-colors hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
 
-              <div className="mb-6">
-                <div className="w-10 h-10 bg-zinc-900 border border-zinc-800 rounded-lg flex items-center justify-center mb-4">
-                    <UserPlus className="w-5 h-5 text-zinc-100" />
+              <div className="relative z-10">
+                <div className="mb-6">
+                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600">
+                    <UserPlus className="h-5 w-5 text-white" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-white">
+                    Invite Team Member
+                  </h2>
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Share this code — your teammate enters it on the signup page
+                    to join your team.
+                  </p>
                 </div>
-                <h2 className="text-lg font-semibold text-white">Invite Team Member</h2>
-                <p className="text-sm text-zinc-400 mt-1">
-                  Share this code — your teammate enters it on the signup page to join your team.
-                </p>
-              </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3">
-                  <span className="font-mono text-lg tracking-widest text-white">
-                    {teamCode || "--------"}
-                  </span>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] px-4 py-3">
+                    <span className="font-mono text-lg tracking-widest text-gradient">
+                      {teamCode || "--------"}
+                    </span>
+                    <button
+                      onClick={handleCopyCode}
+                      className="flex items-center gap-1.5 rounded-md border border-white/10 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-emerald-400" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" />
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+
                   <button
-                    onClick={handleCopyCode}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 rounded-md text-xs font-medium transition-colors"
+                    type="button"
+                    onClick={() => setShowInviteModal(false)}
+                    className="w-full rounded-lg border border-white/10 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
                   >
-                    {copied ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        Copy
-                      </>
-                    )}
+                    Done
                   </button>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setShowInviteModal(false)}
-                  className="w-full px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 rounded-lg text-sm font-medium transition-colors"
-                >
-                  Done
-                </button>
               </div>
             </motion.div>
           </div>

@@ -1,8 +1,10 @@
 // PM2 ecosystem for Project Teams — API + RAG worker.
 // Styled to match your avmg setup (absolute cwd, explicit log files, env_production).
 //
-// >>> EDIT THIS ONE LINE to the real backend path on the new EC2 <<<
-const BACKEND_DIR = "/home/ubuntu/shout/projecteams/b";
+// This file lives in the backend dir, so derive paths from __dirname — that way
+// `cwd` is always correct no matter where the repo is cloned, and there's no
+// absolute path to mistype.
+const BACKEND_DIR = __dirname;
 const LOG_DIR = `${BACKEND_DIR}/logs`; // run `mkdir -p` on this once
 
 module.exports = {

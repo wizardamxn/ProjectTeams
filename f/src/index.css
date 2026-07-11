@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 /* =========================================
-   1. DESIGN TOKENS (Professional Dark Mode)
+   1. DESIGN TOKENS (Emerald / Teal on Zinc)
    ========================================= */
 :root {
   /* Base: Zinc-950 (#09090b) */
   --background: 240 10% 3.9%;
   --foreground: 0 0% 98%;
 
-  /* Cards: Zinc-900 (#18181b) */
+  /* Cards: Zinc-900 */
   --card: 240 10% 3.9%;
   --card-foreground: 0 0% 98%;
 
@@ -16,32 +16,36 @@
   --popover: 240 10% 3.9%;
   --popover-foreground: 0 0% 98%;
 
-  /* Primary: White text on dark */
-  --primary: 0 0% 98%;
-  --primary-foreground: 240 5.9% 10%;
+  /* Primary: Emerald-500 */
+  --primary: 160 84% 39%;
+  --primary-foreground: 0 0% 100%;
 
   /* Secondary: Zinc-800 */
   --secondary: 240 3.7% 15.9%;
   --secondary-foreground: 0 0% 98%;
 
-  /* Muted: Zinc-500 text */
+  /* Muted */
   --muted: 240 3.7% 15.9%;
   --muted-foreground: 240 5% 64.9%;
 
-  /* Accent: Hover states */
-  --accent: 240 3.7% 15.9%;
-  --accent-foreground: 0 0% 98%;
+  /* Accent: Emerald tint */
+  --accent: 160 84% 39%;
+  --accent-foreground: 0 0% 100%;
 
-  /* Destructive: Red */
+  /* Destructive */
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
 
-  /* Borders: Zinc-800 */
+  /* Borders */
   --border: 240 3.7% 15.9%;
   --input: 240 3.7% 15.9%;
-  --ring: 240 4.9% 83.9%;
+  --ring: 160 84% 39%;
 
-  --radius: 0.5rem;
+  --radius: 0.75rem;
+
+  /* Brand ramp (for gradients / glows) */
+  --brand-emerald: 160 84% 39%;
+  --brand-teal: 173 80% 40%;
 }
 
 @theme inline {
@@ -65,15 +69,98 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
 
-  --radius-sm: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 
-  --font-sans: 'Inter', 'system-ui', 'sans-serif';
+  --font-sans: 'Manrope', 'system-ui', 'sans-serif';
+  --font-display: 'Manrope', 'system-ui', 'sans-serif';
+  --font-mono: 'JetBrains Mono', 'ui-monospace', monospace;
+
+  /* ---- Animation registry (Aceternity / React Bits ports) ---- */
+  --animate-aurora: aurora 60s linear infinite;
+  --animate-spotlight: spotlight 2s ease 0.75s 1 forwards;
+  --animate-shimmer: shimmer 2s linear infinite;
+  --animate-scroll: scroll var(--scroll-duration, 40s) linear infinite;
+  --animate-meteor: meteor 5s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-marquee: marquee var(--marquee-duration, 30s) linear infinite;
+  --animate-gradient-x: gradient-x 6s ease infinite;
+  --animate-pulse-ring: pulse-ring 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-blink: blink 1.1s step-end infinite;
+  --animate-beam: beam 3s ease-in-out infinite;
+  --animate-move-horizontal: move-horizontal 40s ease infinite;
 }
 
 /* =========================================
-   2. BASE STYLES
+   2. KEYFRAMES
+   ========================================= */
+@keyframes aurora {
+  0% { background-position: 50% 50%, 50% 50%; }
+  50% { background-position: 350% 50%, 350% 50%; }
+  100% { background-position: 50% 50%, 50% 50%; }
+}
+
+@keyframes spotlight {
+  0% { opacity: 0; transform: translate(-72%, -62%) scale(0.5); }
+  100% { opacity: 1; transform: translate(-50%, -40%) scale(1); }
+}
+
+@keyframes shimmer {
+  from { background-position: 0 0; }
+  to { background-position: -200% 0; }
+}
+
+@keyframes scroll {
+  to { transform: translate(calc(-50% - 0.5rem)); }
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes meteor {
+  0% { transform: rotate(215deg) translateX(0); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: rotate(215deg) translateX(-500px); opacity: 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 hsl(var(--brand-emerald) / 0.5); }
+  70% { box-shadow: 0 0 0 12px hsl(var(--brand-emerald) / 0); }
+  100% { box-shadow: 0 0 0 0 hsl(var(--brand-emerald) / 0); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes beam {
+  0%, 100% { opacity: 0.2; transform: scaleY(0.8); }
+  50% { opacity: 1; transform: scaleY(1); }
+}
+
+@keyframes move-horizontal {
+  0% { transform: translateX(-50%) translateY(-10%); }
+  50% { transform: translateX(50%) translateY(10%); }
+  100% { transform: translateX(-50%) translateY(-10%); }
+}
+
+/* =========================================
+   3. BASE STYLES
    ========================================= */
 @layer base {
   * {
@@ -81,46 +168,120 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    /* Prevent horizontal scrollbar issues */
-    overflow-x: hidden; 
+    overflow-x: hidden;
   }
-  
-  /* Reset button defaults */
   button {
     cursor: pointer;
+  }
+  ::selection {
+    background: hsl(var(--brand-emerald) / 0.3);
+    color: hsl(var(--foreground));
   }
 }
 
 /* =========================================
-   3. SCROLLBAR UTILITY
+   4. UTILITIES
    ========================================= */
 @layer utilities {
+  /* Scrollbar */
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
-
   .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
-
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-zinc-800; /* Darker thumb to match theme */
+    @apply bg-zinc-800;
     border-radius: 10px;
   }
-
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     @apply bg-zinc-700;
   }
-
-  /* Firefox Support */
   .custom-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: #27272a transparent; /* Zinc-800 */
+    scrollbar-color: #27272a transparent;
   }
-  
-  /* Safe area for mobile bottoms */
+
+  /* Mobile safe-area */
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Accent text — solid emerald, no gradient/glow */
+  .text-gradient {
+    color: hsl(160 70% 45%);
+  }
+
+  /* Neutral elevation — no neon glow */
+  .glow-emerald {
+    box-shadow: 0 1px 2px hsl(0 0% 0% / 0.4);
+  }
+  .glow-emerald-lg {
+    box-shadow: 0 24px 60px -24px hsl(0 0% 0% / 0.7);
+  }
+
+  /* Glass surface */
+  .glass {
+    background: hsl(240 10% 8% / 0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid hsl(0 0% 100% / 0.06);
+  }
+  .glass-card {
+    background: hsl(240 10% 8% / 0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid hsl(0 0% 100% / 0.06);
+    border-radius: var(--radius-lg);
+  }
+
+  /* Grid / dot backgrounds (masked radial fade) */
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, hsl(0 0% 100% / 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(0 0% 100% / 0.04) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+  .bg-dot {
+    background-image: radial-gradient(hsl(0 0% 100% / 0.08) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+  .mask-radial-faded {
+    -webkit-mask-image: radial-gradient(ellipse 60% 60% at 50% 0%, #000 40%, transparent 100%);
+    mask-image: radial-gradient(ellipse 60% 60% at 50% 0%, #000 40%, transparent 100%);
+  }
+
+  /* Film-grain noise overlay (fractal-noise SVG data URI).
+     Apply to an absolutely-positioned layer with low opacity, or use
+     .noise-overlay for a ready-made faint full-bleed layer. */
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .noise-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.025;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Shimmer border sweep */
+  .shimmer {
+    background-size: 200% 100%;
+    animation: var(--animate-shimmer);
+  }
+
+  /* Respect reduced motion globally for our animated utilities */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-aurora,
+    .animate-meteor,
+    .animate-float,
+    .animate-marquee,
+    .animate-scroll,
+    .shimmer {
+      animation: none !important;
+    }
   }
 }
