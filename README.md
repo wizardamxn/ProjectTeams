@@ -141,5 +141,5 @@ MIT License — free for personal and commercial use.
 ## 👤 Author
 
 **Aman Ahmad**
-🌐 [Portfolio](https://amanahmad.vercel.app)
+🌐 [Portfolio](https://amanahmad.xyz)
 🐙 [GitHub](https://github.com/wizardamxn)
