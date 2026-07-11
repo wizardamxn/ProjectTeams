@@ -9,7 +9,7 @@ import {
   Clock,
   Sparkles,
   Send,
-} from "lucide-react";
+} from "@/components/icons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -168,14 +168,15 @@ export default function RAGDocs() {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans selection:bg-zinc-800">
-      <div className="max-w-[1600px] mx-auto p-4 min-h-screen flex flex-col">
-        <div className="flex flex-1 gap-6 min-h-0 mt-4">
-          <main className="flex-1 w-full">
+    <div className="mx-auto max-w-6xl">
+      <main className="w-full">
             {/* --- Header Section --- */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-white">
+                <span className="text-sm font-semibold uppercase tracking-widest text-emerald-500">
+                  AI knowledge base
+                </span>
+                <h1 className="mt-1 text-3xl font-bold tracking-tight text-white">
                   RAG Docs
                 </h1>
                 <p className="text-sm text-zinc-400 mt-1">
@@ -196,7 +197,7 @@ export default function RAGDocs() {
                   whileTap={{ scale: 0.98 }}
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
-                  className="bg-zinc-100 hover:bg-white text-zinc-950 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 shadow-sm transition-colors whitespace-nowrap disabled:opacity-50"
+                  className="flex items-center gap-2 whitespace-nowrap rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 px-4 py-2 text-sm font-medium text-white transition-transform hover:scale-[1.02] disabled:opacity-50"
                 >
                   {uploading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -331,7 +332,7 @@ export default function RAGDocs() {
                   messages.map((m, i) => (
                     <div key={i} className="space-y-3">
                       <div className="flex justify-end">
-                        <div className="max-w-[75%] px-4 py-2 text-sm rounded-2xl shadow-sm bg-zinc-100 text-zinc-900 rounded-tr-none">
+                        <div className="max-w-[75%] px-4 py-2 text-sm rounded-2xl shadow-sm bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-tr-none">
                           {m.question}
                         </div>
                       </div>
@@ -370,7 +371,7 @@ export default function RAGDocs() {
                   <button
                     type="submit"
                     disabled={!question.trim() || asking}
-                    className="bg-zinc-100 text-zinc-900 hover:bg-zinc-200 w-11 h-11 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                    className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {asking ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
@@ -381,9 +382,7 @@ export default function RAGDocs() {
                 </form>
               </div>
             </div>
-          </main>
-        </div>
-      </div>
+      </main>
     </div>
   );
 }

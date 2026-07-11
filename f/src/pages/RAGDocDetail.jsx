@@ -9,7 +9,7 @@ import {
   Trash2,
   Sparkles,
   ExternalLink,
-} from "lucide-react";
+} from "@/components/icons";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
@@ -108,10 +108,8 @@ export default function RAGDocDetail() {
   const StatusIcon = STATUS_ICONS[document.ragStatus] || Clock;
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans selection:bg-zinc-800">
-      <div className="max-w-[1600px] mx-auto p-4 min-h-screen flex flex-col">
-        <div className="flex flex-1 gap-6 min-h-0 mt-4">
-          <main className="flex-1 w-full">
+    <div className="mx-auto max-w-6xl">
+      <main className="w-full">
             {/* --- Header --- */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
               <div className="flex items-center gap-3 min-w-0">
@@ -243,9 +241,7 @@ export default function RAGDocDetail() {
                 </div>
               </div>
             </div>
-          </main>
-        </div>
-      </div>
+      </main>
     </div>
   );
 }

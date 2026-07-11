@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, FileText, MessageSquare, Users, Database } from "lucide-react";
+import { LayoutDashboard, FileText, MessageSquare, Users, Database } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 const navItems = [

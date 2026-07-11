@@ -12,7 +12,7 @@ import {
   X,
   AlignLeft,
   ChevronRight,
-} from "lucide-react";
+} from "@/components/icons";
 import { toast } from "sonner";
 import axios from "axios";
 
@@ -157,17 +157,11 @@ const Editor = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans selection:bg-zinc-800">
-      <div className="max-w-[1920px] mx-auto min-h-screen flex flex-col">
-        {/* Navbar */}
-
-        <div className="flex flex-1 overflow-hidden h-[calc(100vh-64px)]">
-          {/* Sidebar */}
-
-          {/* Main Content */}
-          <main className="flex-1 flex flex-col relative min-w-0 bg-[#09090b]">
+    <div className="flex min-h-[calc(100dvh-7rem)] overflow-hidden rounded-2xl border border-white/[0.06] bg-zinc-950 text-zinc-100 md:min-h-[calc(100dvh-4rem)]">
+      {/* Main Content */}
+      <main className="relative flex min-w-0 flex-1 flex-col bg-zinc-950">
             {/* Toolbar */}
-            <div className="h-14 border-b border-zinc-800 flex items-center justify-between px-6 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-20">
+            <div className="h-14 border-b border-white/[0.06] flex items-center justify-between px-6 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-20">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => navigate("/documents")}
@@ -205,7 +199,7 @@ const Editor = () => {
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleSave(false)}
                   disabled={saving}
-                  className="bg-zinc-100 hover:bg-white text-zinc-950 px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-2 disabled:opacity-50 transition-colors"
+                  className="flex items-center gap-2 rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 px-4 py-1.5 text-sm font-medium text-white transition-transform hover:scale-[1.02] disabled:opacity-50"
                 >
                   {saving ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -304,8 +298,6 @@ const Editor = () => {
               </div>
             </div>
           </main>
-        </div>
-      </div>
     </div>
   );
 };
