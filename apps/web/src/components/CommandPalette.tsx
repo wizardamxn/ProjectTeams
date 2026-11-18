@@ -23,6 +23,7 @@ import {
 import { useTeamDocs } from "@/api/docs";
 import { useTeamMembers } from "@/api/team";
 import { useLogout } from "@/api/auth";
+import { useOpenDirect } from "@/api/chat";
 
 /**
  * ⌘K / Ctrl-K command palette. Opens via keyboard, or by dispatching a
@@ -32,6 +33,7 @@ import { useLogout } from "@/api/auth";
 export default function CommandPalette() {
   const navigate = useNavigate();
   const logout = useLogout();
+  const openDirect = useOpenDirect();
 
   const [open, setOpen] = useState(false);
   // Loaded the first time the palette opens, then kept fresh by React Query.
@@ -139,7 +141,11 @@ export default function CommandPalette() {
               <CommandItem
                 key={m._id}
                 value={`person ${m.fullName} ${m.email}`}
-                onSelect={() => run(() => navigate(`/chat/${m._id}`))}
+                onSelect={() =>
+                  run(() =>
+                    openDirect.mutate([m._id], { onSuccess: (c) => navigate(`/chat/${c._id}`) }),
+                  )
+                }
               >
                 <span className="mr-2 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/80 to-teal-600/80 text-[10px] font-semibold text-white">
                   {m.fullName?.charAt(0)?.toUpperCase()}

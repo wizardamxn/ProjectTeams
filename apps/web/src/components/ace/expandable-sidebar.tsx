@@ -70,6 +70,8 @@ export interface SidebarLinkData {
   icon: React.ReactNode;
   active?: boolean;
   onClick?: () => void;
+  /** Unread count: a dot on the icon when collapsed, the number when expanded. */
+  badge?: number;
 }
 
 export const SidebarLink = ({
@@ -91,8 +93,11 @@ export const SidebarLink = ({
         className,
       )}
     >
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+      <span className="relative flex h-5 w-5 shrink-0 items-center justify-center">
         {link.icon}
+        {!!link.badge && !open && (
+          <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-zinc-950" />
+        )}
       </span>
       <AnimatePresence>
         <motion.span
@@ -105,8 +110,12 @@ export const SidebarLink = ({
           {link.label}
         </motion.span>
       </AnimatePresence>
-      {link.active && open && (
-        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-400" />
+      {!!link.badge && open ? (
+        <span className="ml-auto rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">
+          {link.badge > 99 ? "99+" : link.badge}
+        </span>
+      ) : (
+        link.active && open && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-400" />
       )}
     </button>
   );

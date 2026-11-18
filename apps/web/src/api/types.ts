@@ -36,10 +36,8 @@ export interface Member {
   joinedAt: string;
 }
 
-/** A teammate in the chat list (everyone but you). */
-export interface TeamMember extends Member {
-  lastMessage: string | null;
-}
+/** Everyone in the workspace except you. */
+export type TeamMember = Member;
 
 export interface Invite {
   _id: string;
@@ -82,30 +80,89 @@ export interface DocInput {
   starred?: boolean;
 }
 
-export interface ChatMessage {
+/* ---- Chat ---- */
+
+export type ConversationType = "channel" | "dm" | "group";
+
+export interface Person {
   _id: string;
-  senderId: string;
-  senderName: string;
+  fullName: string;
+  avatarUrl?: string;
+}
+
+export interface Conversation {
+  _id: string;
+  type: ConversationType;
+  name: string | null;
+  topic: string | null;
+  isPrivate: boolean;
+  isDefault: boolean;
+  /** DMs and groups: everyone except you. */
+  members: Person[];
+  memberCount: number;
+  unreadCount: number;
+  mentionCount: number;
+  lastMessageAt: string;
+}
+
+export interface BrowseChannel {
+  _id: string;
+  name: string;
+  topic: string | null;
+  memberCount: number;
+}
+
+export interface Attachment {
+  fileName: string;
+  mimeType: string;
+  size: number;
+  url: string | null;
+}
+
+/** What the upload endpoint returns; sent back when posting the message. */
+export interface UploadedAttachment {
+  storagePath: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+}
+
+export interface Message {
+  _id: string;
+  conversationId: string;
+  sender: Person;
   text: string;
+  threadRootId: string | null;
+  replyCount: number;
+  lastReplyAt: string | null;
+  mentions: string[];
+  attachments: Attachment[];
+  editedAt: string | null;
+  deleted: boolean;
   createdAt: string;
 }
 
-export interface Chat {
-  _id: string;
-  participants: string[];
-  messages: ChatMessage[];
+export interface MessagePage {
+  messages: Message[];
+  hasMore: boolean;
 }
 
-/** A message as it is held in the chat store (history and live messages alike). */
-export interface ChatEvent {
-  chatId: string;
-  message: {
-    _id?: string;
-    senderId: string;
-    senderName: string;
-    text: string;
-    timestamp?: string;
-  };
+export interface Thread {
+  root: Message;
+  replies: Message[];
+}
+
+export interface AppNotification {
+  _id: string;
+  type: "mention" | "thread_reply";
+  conversationId: string;
+  conversationName: string;
+  messageId: string;
+  threadRootId: string | null;
+  actor: Person;
+  preview: string;
+  read: boolean;
+  createdAt: string;
 }
 
 export type RagStatus = "uploaded" | "processing" | "ready" | "failed";

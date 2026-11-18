@@ -8,6 +8,7 @@
 import { forwardRef } from "react";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
+  Notification03Icon,
   ArrowDown01Icon,
   Link01Icon,
   Sun01Icon,
@@ -153,3 +154,4 @@ export const Google = make(GoogleIcon, "Google");
 export const Settings = make(Settings01Icon, "Settings");
 export const DoorExit = make(Door01Icon, "DoorExit");
 export const UserRemove = make(UserRemove01Icon, "UserRemove");
+export const Bell = make(Notification03Icon, "Bell");

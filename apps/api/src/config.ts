@@ -57,6 +57,12 @@ const schema = z.object({
   SUPABASE_BUCKET: z.string().optional(),
 
   REDIS_URL: z.string().default("redis://localhost:6379"),
+  // Share sockets and presence through Redis so the API can run as several
+  // processes. Off = single process (PM2 instances: 1), presence in memory.
+  REALTIME_REDIS: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 const parsed = schema.safeParse(process.env);

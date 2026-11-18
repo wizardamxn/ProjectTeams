@@ -1,13 +1,11 @@
 import { configureStore } from "@reduxjs/toolkit";
 import userReducer, { checkAuth, logout } from "@/store/slices/User";
-import chatReducer from "@/store/slices/SocketThunks";
 import { setSessionHandlers } from "@/lib/api";
 import { queryClient } from "@/api/queryClient";
 
 export const store = configureStore({
   reducer: {
     user: userReducer,
-    chat: chatReducer,
   },
 });
 

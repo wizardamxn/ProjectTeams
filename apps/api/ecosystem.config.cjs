@@ -14,7 +14,9 @@ module.exports = {
       name: "pt-api",
       cwd: BACKEND_DIR,
       script: "dist/server.js",
-      instances: 1, // single instance: in-memory Socket.IO presence, no Redis adapter
+      // One instance keeps presence in memory. To run more, set REALTIME_REDIS=true
+      // (Socket.IO Redis adapter + Redis presence) and use exec_mode "cluster" with sticky sessions.
+      instances: 1,
       exec_mode: "fork", // fork not cluster (sockets would split across workers)
       max_memory_restart: "400M",
       env_production: {

@@ -8,7 +8,8 @@ import { logger } from "./lib/logger.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { aiRouter } from "./modules/ai/ai.routes.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
-import { chatRouter } from "./modules/chat/chat.routes.js";
+import { conversationsRouter, messagesRouter } from "./modules/chat/chat.routes.js";
+import { notificationsRouter } from "./modules/notifications/notifications.routes.js";
 import { docsRouter } from "./modules/docs/docs.routes.js";
 import { knowledgeRouter } from "./modules/knowledge/knowledge.routes.js";
 import { meRouter, usersRouter } from "./modules/users/users.routes.js";
@@ -42,7 +43,9 @@ export const createApp = () => {
   app.use("/api/workspaces", workspacesRouter);
   app.use("/api/invites", invitesRouter);
   app.use("/api/doc", docsRouter);
-  app.use("/api/chat", chatRouter);
+  app.use("/api/conversations", conversationsRouter);
+  app.use("/api/messages", messagesRouter);
+  app.use("/api/notifications", notificationsRouter);
   app.use("/api/ai", aiRouter);
   app.use("/api/upload", knowledgeRouter);
 

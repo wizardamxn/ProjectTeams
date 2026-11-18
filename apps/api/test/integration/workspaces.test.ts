@@ -193,6 +193,6 @@ describe("roles and membership", () => {
     const b1 = await signUp(app, { team: TEAM_B });
     const list = await a1.agent.get("/api/profile/teammembers").expect(200);
     expect(list.body).toHaveLength(1);
-    await a1.agent.get(`/api/chat/with/${b1.id}`).expect(404);
+    await a1.agent.post("/api/conversations/direct").send({ userIds: [b1.id] }).expect(400);
   });
 });

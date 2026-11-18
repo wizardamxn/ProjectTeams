@@ -1,35 +1,39 @@
 import type { Server as HttpServer } from "node:http";
 import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
 import { parseCookie } from "cookie";
 import { config } from "../config.js";
-import { AppError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
+import { getRedis } from "../lib/redis.js";
 import { AUTH_COOKIE, getUserFromToken } from "../middleware/auth.js";
+import { ConversationMember } from "../models/conversation.js";
+import { Membership } from "../models/membership.js";
 import type { UserDoc } from "../models/user.js";
-import { chatService } from "../modules/chat/chat.service.js";
-import { usersService } from "../modules/users/users.service.js";
 import { workspacesService } from "../modules/workspaces/workspaces.service.js";
+import { emitToUsers, emitToWorkspace, setRealtimeServer, userRoom, workspaceRoom } from "./emitter.js";
 import { presence } from "./presence.js";
+
+// Sockets only *deliver* events (new messages, edits, typing, presence,
+// notifications). Everything that changes data goes through the REST API,
+// which checks permissions and then publishes through ./emitter.ts.
 
 interface SocketData {
   user: UserDoc;
-  chatRoom?: string;
+  workspaceId?: string;
 }
 
-type Target = { targetUserId?: string } | undefined;
-
 interface ClientEvents {
-  joinChat: (payload: Target) => void;
-  checkOnlineStatus: (payload: Target, callback: (online: boolean) => void) => void;
-  sendMessage: (payload: (Target & { text?: string }) | undefined) => void;
+  typing: (payload: { conversationId?: string } | undefined) => void;
+  "presence:list": (callback: (onlineUserIds: string[]) => void) => void;
 }
 
 interface ServerEvents {
-  error: (message: string) => void;
-  messageReceived: (event: Awaited<ReturnType<typeof chatService.send>>) => void;
+  typing: (event: { conversationId: string; userId: string; fullName: string }) => void;
+  "presence:update": (event: { userId: string; online: boolean }) => void;
+  [event: string]: (...args: never[]) => void;
 }
 
-const publicMessage = (err: unknown, fallback: string) => (err instanceof AppError ? err.message : fallback);
+const TYPING_THROTTLE_MS = 2000;
 
 export const initializeSocket = (server: HttpServer) => {
   const io = new Server<ClientEvents, ServerEvents, Record<string, never>, SocketData>(server, {
@@ -37,8 +41,14 @@ export const initializeSocket = (server: HttpServer) => {
     maxHttpBufferSize: 64 * 1024,
   });
 
-  // Every socket must carry a valid session cookie. Identity comes from here,
-  // never from event payloads.
+  if (config.REALTIME_REDIS) {
+    const pub = getRedis().duplicate();
+    const sub = getRedis().duplicate();
+    io.adapter(createAdapter(pub, sub));
+    logger.info("Socket.IO using the Redis adapter");
+  }
+
+  // Every socket must carry a valid session cookie.
   io.use(async (socket, next) => {
     try {
       const cookies = parseCookie(socket.handshake.headers.cookie ?? "");
@@ -51,53 +61,53 @@ export const initializeSocket = (server: HttpServer) => {
     }
   });
 
-  io.on("connection", (socket) => {
+  io.on("connection", async (socket) => {
     const { user } = socket.data;
     const userId = user._id.toString();
-    presence.add(userId, socket.id);
+    await socket.join(userRoom(userId));
 
-    // Membership is re-checked on every event, so removing someone from a
-    // workspace takes effect immediately, even on an open socket.
-    const context = async () => {
-      const ctx = await workspacesService.resolveActive(user);
-      if (!ctx) throw new AppError(409, "Create or join a workspace first", "no_workspace");
-      return ctx;
-    };
+    // The workspace this socket works in. The client reconnects after switching.
+    const ctx = await workspacesService.resolveActive(user).catch(() => null);
+    const workspaceId = ctx?.key;
+    socket.data.workspaceId = workspaceId;
+    if (workspaceId) await socket.join(workspaceRoom(workspaceId));
 
-    socket.on("joinChat", async (payload) => {
-      const targetUserId = payload?.targetUserId;
-      try {
-        const chat = await chatService.openWith(await context(), targetUserId);
-        const room = chat._id.toString();
-        // One open conversation per socket: leave the previous one.
-        if (socket.data.chatRoom && socket.data.chatRoom !== room) socket.leave(socket.data.chatRoom);
-        socket.data.chatRoom = room;
-        socket.join(room);
-      } catch (err) {
-        socket.emit("error", publicMessage(err, "Cannot open this chat"));
+    if (await presence().add(userId, socket.id)) {
+      if (workspaceId) emitToWorkspace(workspaceId, "presence:update", { userId, online: true });
+    }
+
+    socket.on("presence:list", async (callback) => {
+      if (typeof callback !== "function" || !workspaceId) return;
+      const members = await Membership.find({ workspaceId }).select("userId").lean();
+      const online = await presence().onlineAmong(members.map((m) => m.userId.toString()));
+      callback([...online]);
+    });
+
+    // "X is typing…", sent to the other members of the conversation.
+    let lastTyping = 0;
+    socket.on("typing", async (payload) => {
+      const conversationId = payload?.conversationId;
+      const now = Date.now();
+      if (typeof conversationId !== "string" || !/^[a-f0-9]{24}$/i.test(conversationId)) return;
+      if (now - lastTyping < TYPING_THROTTLE_MS) return;
+      lastTyping = now;
+      const members = await ConversationMember.find({ conversationId }).select("userId").lean();
+      const ids = members.map((m) => m.userId.toString());
+      if (!ids.includes(userId)) return; // not your conversation
+      emitToUsers(
+        ids.filter((id) => id !== userId),
+        "typing",
+        { conversationId, userId, fullName: user.fullName },
+      );
+    });
+
+    socket.on("disconnect", async () => {
+      if (await presence().remove(userId, socket.id)) {
+        if (workspaceId) emitToWorkspace(workspaceId, "presence:update", { userId, online: false });
       }
     });
-
-    socket.on("checkOnlineStatus", async (payload, callback) => {
-      if (typeof callback !== "function") return;
-      const teammate = await context()
-        .then((ctx) => usersService.findTeammate(ctx, payload?.targetUserId))
-        .catch(() => null);
-      callback(teammate ? presence.isOnline(teammate._id.toString()) : false);
-    });
-
-    socket.on("sendMessage", async (payload) => {
-      try {
-        const event = await chatService.send(await context(), payload?.targetUserId, payload?.text);
-        io.to(event.chatId).emit("messageReceived", event);
-      } catch (err) {
-        if (!(err instanceof AppError)) logger.error({ err, userId }, "sendMessage failed");
-        socket.emit("error", publicMessage(err, "Message could not be sent"));
-      }
-    });
-
-    socket.on("disconnect", () => presence.remove(userId, socket.id));
   });
 
+  setRealtimeServer(io as unknown as Server);
   return io;
 };

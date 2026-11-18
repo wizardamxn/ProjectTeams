@@ -31,7 +31,16 @@ export const keys = {
     invites: ["workspace", "invites"] as const,
     invite: (token: string) => ["invite", token] as const,
   },
-  chat: { with: (userId: string) => ["chat", userId] as const },
+  chat: {
+    conversations: ["chat", "conversations"] as const,
+    browse: ["chat", "browse"] as const,
+    members: (conversationId: string) => ["chat", "members", conversationId] as const,
+    messages: (conversationId: string) => ["chat", "messages", conversationId] as const,
+    thread: (conversationId: string, rootId: string) => ["chat", "thread", conversationId, rootId] as const,
+    typing: (conversationId: string) => ["chat", "typing", conversationId] as const,
+    presence: ["chat", "presence"] as const,
+  },
+  notifications: ["notifications"] as const,
   knowledge: {
     all: ["knowledge"] as const,
     list: () => [...keys.knowledge.all, "list"] as const,

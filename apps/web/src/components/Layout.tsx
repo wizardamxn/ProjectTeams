@@ -23,6 +23,9 @@ import { FloatingDock, type DockItem } from "@/components/ace/floating-dock";
 import CommandPalette from "@/components/CommandPalette";
 import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import NotificationsBell from "@/components/NotificationsBell";
+import { useRealtime } from "@/api/realtime";
+import { useConversations } from "@/api/chat";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
@@ -93,6 +96,16 @@ const RailFooter = ({
           {name ?? "Profile"}
         </span>
       </button>
+      <NotificationsBell
+        label={
+          <span
+            className="overflow-hidden whitespace-nowrap text-sm font-medium"
+            style={{ opacity: open ? 1 : 0, width: open ? "auto" : 0 }}
+          >
+            Notifications
+          </span>
+        }
+      />
       <ThemeToggle
         className="mt-1 flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100"
         label={
@@ -125,6 +138,11 @@ export default function Layout() {
   const navigate = useNavigate();
   const logout = useLogout();
   const user = useAppSelector((s) => s.user.user);
+
+  // Live updates for chat, presence and notifications, everywhere in the app.
+  useRealtime();
+  const { data: conversations = [] } = useConversations();
+  const chatUnread = conversations.reduce((n, c) => n + c.unreadCount, 0);
 
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
@@ -164,6 +182,7 @@ export default function Layout() {
                   icon: <item.icon className="h-5 w-5" />,
                   active: isActive(item.path),
                   onClick: () => navigate(item.path),
+                  badge: item.path === "/chat" ? chatUnread : undefined,
                 }}
               />
             ))}
@@ -185,9 +204,12 @@ export default function Layout() {
         }
       >
         {/* Mobile: workspace switcher (the desktop rail has its own) */}
-        {!inConversation && (
-          <div className={`mb-4 max-w-[70%] md:hidden ${isChat ? "px-4 pt-4" : ""}`}>
-            <WorkspaceSwitcher />
+        {!isChat && (
+          <div className="mb-4 flex items-center justify-between md:hidden">
+            <div className="max-w-[70%]">
+              <WorkspaceSwitcher />
+            </div>
+            <NotificationsBell align="right" />
           </div>
         )}
         <Outlet />

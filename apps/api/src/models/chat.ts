@@ -1,6 +1,8 @@
+// LEGACY (pre-Phase 4): 1:1 chats with messages embedded in one document.
+// Only read by the migration that moves them into Conversation + Message.
 import mongoose, { Schema, type HydratedDocument, type Types } from "mongoose";
 
-export interface IMessage {
+export interface ILegacyMessage {
   _id: Types.ObjectId;
   senderId: Types.ObjectId;
   senderName: string;
@@ -16,14 +18,16 @@ export interface IChat {
   participants: Types.ObjectId[];
   pairKey?: string;
   // Still embedded; Phase 4 moves messages to their own paginated collection.
-  messages: Types.DocumentArray<IMessage>;
+  messages: Types.DocumentArray<ILegacyMessage>;
+  /** Set once the chat has been copied into the new conversations model. */
+  migratedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export type ChatDoc = HydratedDocument<IChat>;
 
-const messageSchema = new Schema<IMessage>(
+const messageSchema = new Schema<ILegacyMessage>(
   {
     senderId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     senderName: { type: String, required: true },
@@ -40,6 +44,7 @@ const chatSchema = new Schema<IChat>(
     // Sparse because chats created before this field have none.
     pairKey: { type: String, unique: true, sparse: true },
     messages: [messageSchema],
+    migratedAt: { type: Date },
   },
   { timestamps: true },
 );

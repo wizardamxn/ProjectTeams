@@ -4,7 +4,7 @@ Team chat, shared docs and an AI knowledge base you can ask questions, in one wo
 
 ## What's in it today
 
-- **Chat**: 1:1 messages between teammates over Socket.IO.
+- **Chat**: public and private channels, DMs and group DMs, threads, @mentions, file and image sharing, edit/delete, unread counts, typing indicators, online presence and a notifications inbox.
 - **Docs**: write, tag, star and version team documents, with AI summaries, tags and editing.
 - **Knowledge**: upload PDFs and text files, index them, and ask questions answered only from your team's files (RAG on MongoDB Atlas Vector Search).
 - **Workspaces**: create workspaces, invite people by link or email, owner/admin/member roles, switch between workspaces.
@@ -93,6 +93,10 @@ Accounts created before workspaces existed shared an 8-digit team code. Each cod
 cd apps/api && npm run build && npm run migrate:workspaces
 ```
 
+### Upgrading chat history
+
+Old one-to-one chats are copied into the new conversations (with their original timestamps) the first time anyone in the workspace opens Chat. Nothing to run.
+
 ## Deploying
 
 Production is one origin: Nginx serves `apps/web/dist` and proxies `/api` and `/socket.io` to the API on localhost. PM2 runs the API and the worker from compiled output.
@@ -108,7 +112,7 @@ See [`deploy/nginx.conf.example`](deploy/nginx.conf.example) and [`apps/api/ecos
 1. ✅ Lockdown: auth on every route and socket, team isolation, safe password reset
 2. ✅ Foundations: TypeScript API in modules, tests, CI, React Query
 3. ✅ Workspaces: real workspaces, invite links, roles, Google sign-in, onboarding, light theme
-4. Chat v2: channels, threads, unread counts, real presence, notifications
+4. ✅ Chat v2: channels, threads, unread counts, real presence, notifications
 5. Docs v2 + Knowledge: rich-text editor, one searchable knowledge base, cited answers
 6. Business: billing, audit log, export
 7. Collaboration: live co-editing, comments, integrations

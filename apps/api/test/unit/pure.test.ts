@@ -49,3 +49,16 @@ describe("password rule", () => {
     expect(password.safeParse(value).success).toBe(ok);
   });
 });
+
+import { channelName } from "../../src/modules/chat/conversations.service.js";
+
+describe("channelName", () => {
+  it.each([
+    ["Design Team!", "design-team"],
+    ["  --hello__world--  ", "hello-world"],
+    ["Ünïcode & stuff", "unicode-stuff"],
+    ["!!!", ""],
+  ])("%s -> %s", (raw, expected) => {
+    expect(channelName(raw)).toBe(expected);
+  });
+});

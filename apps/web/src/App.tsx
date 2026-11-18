@@ -6,7 +6,6 @@ import { useEffect } from "react";
 import { Loader2 } from "@/components/icons";
 import { useAppDispatch, useAppSelector } from "./store/hooks";
 import { checkAuth } from "./store/slices/User";
-import { listenToMessages } from "./store/slices/SocketThunks";
 import { queryClient } from "./api/queryClient";
 import socket from "./utils/socket";
 
@@ -20,7 +19,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Documents from "./pages/Documents";
 import Editor from "./pages/Editor";
-import Chat, { ChatMember } from "./pages/Chat";
+import Chat from "./pages/Chat";
 import Team from "./pages/Team";
 import NotFound from "./pages/NotFound";
 import ProfilePage from "./pages/Profile";
@@ -60,11 +59,7 @@ const router = createBrowserRouter([
               { path: "/rag-docs/:id", element: <RAGDocDetail /> },
               { path: "/create", element: <Create /> },
               { path: "/editor/:doc_id", element: <Editor /> },
-              {
-                path: "/chat",
-                element: <Chat />,
-                children: [{ path: ":userId", element: <ChatMember /> }],
-              },
+              { path: "/chat/:conversationId?", element: <Chat /> },
             ],
           },
         ],
@@ -90,7 +85,6 @@ const App = () => {
     // The socket authenticates with the session cookie and works in the
     // active workspace, so it reconnects whenever either changes.
     if (userId && workspaceId) {
-      listenToMessages(dispatch);
       socket.disconnect().connect();
     } else {
       socket.disconnect();
