@@ -92,3 +92,84 @@ export const isReasonableRichText = (doc: unknown, maxBytes = 500_000): boolean 
     return false;
   }
 };
+
+/* ---------------- Markdown (exports) ---------------- */
+
+const escapeMd = (s: string) => s.replace(/([\\`*_[\]#<>|])/g, "\\$1");
+
+const inlineMd = (nodes: RichNode[] = []): string =>
+  nodes
+    .map((n) => {
+      if (n.type === "hardBreak") return "  \n";
+      if (n.type !== "text" || typeof n.text !== "string") return inlineMd(n.content);
+      const marks = new Set((n.marks ?? []).map((m) => m.type));
+      // Code spans are literal; everything else is escaped.
+      let t = marks.has("code") ? `\`${n.text.replace(/`/g, "\u02cb")}\`` : escapeMd(n.text);
+      if (marks.has("bold")) t = `**${t}**`;
+      if (marks.has("italic")) t = `*${t}*`;
+      if (marks.has("strike")) t = `~~${t}~~`;
+      const link = n.marks?.find((m) => m.type === "link");
+      const href = typeof link?.attrs?.href === "string" ? link.attrs.href : null;
+      if (href && /^(https?:|mailto:)/i.test(href)) t = `[${t}](${href.replace(/\)/g, "%29")})`;
+      return t;
+    })
+    .join("");
+
+const indent = (text: string, pad: string) =>
+  text
+    .split("\n")
+    .map((l, i) => (i === 0 || !l ? l : pad + l))
+    .join("\n");
+
+const blockMd = (node: RichNode): string => {
+  const kids = node.content ?? [];
+  switch (node.type) {
+    case "doc":
+      return kids.map(blockMd).filter((b) => b !== "").join("\n\n");
+    case "paragraph":
+      return inlineMd(kids);
+    case "heading": {
+      const level = Math.min(Math.max(Number(node.attrs?.level) || 1, 1), 6);
+      return `${"#".repeat(level)} ${inlineMd(kids)}`;
+    }
+    case "blockquote":
+      return kids
+        .map(blockMd)
+        .join("\n\n")
+        .split("\n")
+        .map((l) => (l ? `> ${l}` : ">"))
+        .join("\n");
+    case "codeBlock": {
+      const lang = typeof node.attrs?.language === "string" ? node.attrs.language : "";
+      const code = kids.map((k) => k.text ?? "").join("");
+      const fence = code.includes("```") ? "````" : "```";
+      return `${fence}${lang}\n${code}\n${fence}`;
+    }
+    case "horizontalRule":
+      return "---";
+    case "bulletList":
+      return kids.map((li) => `- ${indent(listItemMd(li), "  ")}`).join("\n");
+    case "orderedList": {
+      const start = Number(node.attrs?.start) || 1;
+      return kids.map((li, i) => `${start + i}. ${indent(listItemMd(li), "   ")}`).join("\n");
+    }
+    case "taskList":
+      return kids.map((li) => `- [${li.attrs?.checked ? "x" : " "}] ${indent(listItemMd(li), "  ")}`).join("\n");
+    default:
+      // Unknown blocks: keep their text rather than dropping it.
+      return kids.length ? kids.map(blockMd).join("\n\n") : inlineMd([node]);
+  }
+};
+
+/** A list item's blocks, with nested lists kept tight under the first line. */
+const listItemMd = (li: RichNode) =>
+  (li.content ?? [])
+    .map(blockMd)
+    .filter((b) => b !== "")
+    .join("\n");
+
+/** Editor JSON as GitHub-flavoured Markdown. */
+export const richTextToMarkdown = (doc: unknown): string => {
+  if (!doc || typeof doc !== "object") return "";
+  return blockMd(doc as RichNode).replace(/\n{3,}/g, "\n\n").trim() + "\n";
+};

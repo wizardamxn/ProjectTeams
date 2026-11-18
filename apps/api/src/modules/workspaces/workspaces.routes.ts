@@ -6,6 +6,12 @@ import { ctxOf, requireRole, requireWorkspace } from "../../middleware/workspace
 import { ROLES } from "../../models/membership.js";
 import { INVITE_ROLES } from "../../models/invite.js";
 import { invitesService } from "../invites/invites.service.js";
+import { auditService, type AuditFilter } from "../audit/audit.service.js";
+import { exportService } from "../export/export.service.js";
+import { AUDIT_ACTIONS } from "../../models/auditEvent.js";
+import { exportLimiter } from "../../middleware/rateLimits.js";
+import { badRequest } from "../../lib/errors.js";
+import { deleteWorkspace } from "./deleteWorkspace.js";
 import { workspacesService } from "./workspaces.service.js";
 
 const nameSchema = z.object({
@@ -13,6 +19,20 @@ const nameSchema = z.object({
 });
 
 const roleSchema = z.object({ role: z.enum(ROLES) });
+
+const deleteSchema = z.object({ confirmName: z.string({ required_error: "Type the workspace name to confirm" }) });
+
+const auditQuery = z.object({
+  action: z.enum(AUDIT_ACTIONS).optional(),
+  actorId: z.string().regex(/^[a-f0-9]{24}$/i).optional(),
+  before: z.string().regex(/^[a-f0-9]{24}$/i).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+const parseAuditQuery = (query: unknown): AuditFilter => {
+  const parsed = auditQuery.safeParse(query);
+  if (!parsed.success) throw badRequest("Invalid filter");
+  return parsed.data;
+};
 
 const inviteSchema = z.object({
   role: z.enum(INVITE_ROLES).default("member"),
@@ -55,6 +75,32 @@ current.get("/", (req, res) => {
 current.patch("/", requireRole("admin"), validateBody(nameSchema), async (req, res) => {
   const ws = await workspacesService.rename(ctxOf(req), req.body.name);
   res.json({ _id: ws._id.toString(), name: ws.name });
+});
+
+/** Permanently deletes the workspace. Owner only; the body must repeat the workspace name. */
+current.delete("/", requireRole("owner"), validateBody(deleteSchema), async (req, res) => {
+  await deleteWorkspace(ctxOf(req), req.body.confirmName);
+  res.json({ ok: true });
+});
+
+/* ---- Audit log and export (admins) ---- */
+
+current.get("/audit", requireRole("admin"), async (req, res) => {
+  res.json(await auditService.list(ctxOf(req), parseAuditQuery(req.query)));
+});
+
+current.get("/audit.csv", requireRole("admin"), async (req, res) => {
+  const ctx = ctxOf(req);
+  const csv = await auditService.csv(ctx, parseAuditQuery(req.query));
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="audit-log-${new Date().toISOString().slice(0, 10)}.csv"`);
+  res.setHeader("Cache-Control", "no-store");
+  res.send(csv);
+});
+
+/** Zip of the workspace. `?files=0` leaves out file contents (much smaller). */
+current.get("/export", requireRole("admin"), exportLimiter, async (req, res) => {
+  await exportService.workspace(ctxOf(req), res, { files: req.query.files !== "0" });
 });
 
 current.post("/leave", async (req, res) => {

@@ -11,6 +11,7 @@ import { User } from "../../models/user.js";
 import { enqueueDocIndex } from "../../queues/ragQueue.js";
 import type { WorkspaceContext } from "../workspaces/workspaces.service.js";
 import type { CreateDocInput, UpdateDocInput } from "./docs.schemas.js";
+import { auditService } from "../audit/audit.service.js";
 
 // Every lookup is scoped to the active workspace. A document from another
 // workspace is indistinguishable from one that doesn't exist.
@@ -187,6 +188,7 @@ export const docsService = {
       DocumentVersion.deleteMany({ documentId: doc._id }),
       RagChunk.deleteMany({ sourceType: "doc", sourceId: doc._id }),
     ]);
+    auditService.record(ctx, "doc.deleted", { type: "doc", id: doc._id.toString(), label: doc.title });
   },
 
   /* ---- History ---- */
@@ -222,6 +224,7 @@ export const docsService = {
     doc.set({ title: v.title, contentJson: v.contentJson, content: richTextToPlain(v.contentJson), lastEditedBy: ctx.user._id });
     await doc.save();
     void reindex(doc._id);
+    auditService.record(ctx, "doc.version_restored", { type: "doc", id: doc._id.toString(), label: doc.title }, { versionId });
     return doc;
   },
 
@@ -261,7 +264,8 @@ export const docsService = {
   async deleteFolder(ctx: WorkspaceContext, folderId: string) {
     const folder = await Folder.findOne({ _id: folderId, workspaceId: ctx.workspace._id });
     if (!folder) throw notFound("Folder not found");
-    await Document.updateMany({ teamId: ctx.key, folderId: folder._id }, { $unset: { folderId: 1 } });
+    const moved = await Document.updateMany({ teamId: ctx.key, folderId: folder._id }, { $unset: { folderId: 1 } });
     await folder.deleteOne();
+    auditService.record(ctx, "folder.deleted", { type: "folder", id: folder._id.toString(), label: folder.name }, { docsMoved: moved.modifiedCount });
   },
 };

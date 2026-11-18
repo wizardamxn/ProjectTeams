@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { richTextToMarkdown } from "../../src/lib/richText.js";
+import { csvCell } from "../../src/modules/audit/audit.service.js";
+import { safeName } from "../../src/modules/export/zip.js";
 import { parseTags } from "../../src/modules/ai/ai.service.js";
 import { chunkText, safeFileName } from "../../src/modules/knowledge/ingest.js";
 import { password } from "../../src/modules/auth/auth.schemas.js";
@@ -147,5 +150,72 @@ describe("Ask citations", () => {
     expect(toSource({ _id: id, text: "t", score: 1, sourceType: "chat", sourceId: id, messageId: msg, title: "#general" }, 3)).toMatchObject({
       type: "chat", conversationId: id.toString(), messageId: msg.toString(), title: "#general",
     });
+  });
+});
+
+describe("richTextToMarkdown", () => {
+  const t = (text: string, ...marks: string[]) => ({ type: "text", text, marks: marks.map((type) => ({ type })) });
+  const p = (...content: unknown[]) => ({ type: "paragraph", content });
+  const li = (...content: unknown[]) => ({ type: "listItem", content });
+
+  it("converts headings, marks, links and code", () => {
+    const md = richTextToMarkdown({
+      type: "doc",
+      content: [
+        { type: "heading", attrs: { level: 2 }, content: [t("Plan")] },
+        p(t("Ship "), t("now", "bold"), t(" or "), t("never", "italic"), t(" via "), t("x()", "code")),
+        p({ type: "text", text: "docs", marks: [{ type: "link", attrs: { href: "https://example.com/a(b)" } }] }),
+        { type: "codeBlock", attrs: { language: "ts" }, content: [t("const a = 1;")] },
+        { type: "horizontalRule" },
+        { type: "blockquote", content: [p(t("quoted"))] },
+      ],
+    });
+    expect(md).toBe(
+      "## Plan\n\nShip **now** or *never* via `x()`\n\n[docs](https://example.com/a(b%29)\n\n```ts\nconst a = 1;\n```\n\n---\n\n> quoted\n",
+    );
+  });
+
+  it("converts nested lists and checklists", () => {
+    const md = richTextToMarkdown({
+      type: "doc",
+      content: [
+        { type: "bulletList", content: [li(p(t("a")), { type: "bulletList", content: [li(p(t("a1")))] }), li(p(t("b")))] },
+        { type: "orderedList", attrs: { start: 3 }, content: [li(p(t("three"))), li(p(t("four")))] },
+        { type: "taskList", content: [{ type: "taskItem", attrs: { checked: true }, content: [p(t("done"))] }, { type: "taskItem", attrs: { checked: false }, content: [p(t("todo"))] }] },
+      ],
+    });
+    expect(md).toBe("- a\n  - a1\n- b\n\n3. three\n4. four\n\n- [x] done\n- [ ] todo\n");
+  });
+
+  it("escapes Markdown characters and drops unsafe links", () => {
+    const md = richTextToMarkdown({
+      type: "doc",
+      content: [p(t("# not a heading *x*")), p({ type: "text", text: "bad", marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }] })],
+    });
+    expect(md).toBe("\\# not a heading \\*x\\*\n\nbad\n");
+  });
+
+  it("handles junk", () => {
+    expect(richTextToMarkdown(null)).toBe("");
+    expect(richTextToMarkdown({ type: "doc" })).toBe("\n");
+  });
+});
+
+describe("export helpers", () => {
+
+  it("csvCell quotes and defuses formulas", () => {
+    expect(csvCell("plain")).toBe("plain");
+    expect(csvCell('a,"b"')).toBe('"a,""b"""');
+    expect(csvCell("=SUM(A1)")).toBe("'=SUM(A1)");
+    expect(csvCell("-1")).toBe("'-1");
+    expect(csvCell(null)).toBe("");
+    expect(csvCell(new Date("2026-01-02T03:04:05Z"))).toBe("2026-01-02T03:04:05.000Z");
+  });
+
+  it("safeName makes file names safe", () => {
+    expect(safeName("Q4 plan / draft")).toBe("Q4 plan - draft");
+    expect(safeName("../../etc/passwd")).toBe("etc - passwd");
+    expect(safeName("   ")).toBe("untitled");
+    expect(safeName("a".repeat(200))).toHaveLength(80);
   });
 });

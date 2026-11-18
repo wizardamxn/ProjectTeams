@@ -25,3 +25,14 @@ export const aiLimiter = rateLimit({
   keyGenerator: (req) => (req.user ? `user:${req.user._id}` : ipKeyGenerator(req.ip ?? "")),
   handler: reply("AI limit reached. Try again later."),
 });
+
+// Exports read the whole workspace: a few per hour per user is plenty.
+export const exportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  skip: () => isTest,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  keyGenerator: (req) => (req.user ? `user:${req.user._id}` : ipKeyGenerator(req.ip ?? "")),
+  handler: reply("Too many exports. Try again in an hour."),
+});

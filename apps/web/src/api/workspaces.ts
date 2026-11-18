@@ -1,15 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAppDispatch } from "@/store/hooks";
 import { checkAuth } from "@/store/slices/User";
 import { keys } from "./queryClient";
-import type { Invite, InvitePreview, Member, Role } from "./types";
+import type { AuditFilter, AuditPage, Invite, InvitePreview, Member, Role } from "./types";
 
 /**
  * Anything that changes which workspace you're in, or your role in it,
  * reloads the session and drops every cached query (they belong to the old workspace).
  */
-const useRefreshSession = () => {
+export const useRefreshSession = () => {
   const dispatch = useAppDispatch();
   const qc = useQueryClient();
   return async () => {
@@ -128,5 +128,52 @@ export const useAcceptInvite = () => {
     onSuccess: async () => {
       await refresh();
     },
+  });
+};
+
+/* ---- Audit log, export, delete (admins / owner) ---- */
+
+const auditParams = (filter: AuditFilter) =>
+  Object.fromEntries(Object.entries(filter).filter(([, v]) => v)) as Record<string, string>;
+
+export const useAuditLog = (filter: AuditFilter, { enabled = true } = {}) =>
+  useInfiniteQuery({
+    queryKey: ["workspace", "audit", filter],
+    queryFn: ({ pageParam }) =>
+      api
+        .get<AuditPage>("/workspaces/current/audit", { params: { ...auditParams(filter), before: pageParam, limit: 50 } })
+        .then((r) => r.data),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    enabled,
+  });
+
+/** Downloads the filtered audit log as CSV (small enough to fetch whole). */
+export const downloadAuditCsv = async (filter: AuditFilter) => {
+  const res = await api.get<Blob>("/workspaces/current/audit.csv", { params: auditParams(filter), responseType: "blob" });
+  saveBlob(res.data, `audit-log-${new Date().toISOString().slice(0, 10)}.csv`);
+};
+
+const saveBlob = (blob: Blob, name: string) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+/**
+ * Exports can be large, so the browser downloads them directly (streamed, with
+ * its own progress bar) instead of holding them in memory here.
+ */
+export const exportUrl = (kind: "workspace" | "me", { files = true } = {}) =>
+  `${api.defaults.baseURL}${kind === "me" ? "/me/export" : `/workspaces/current/export${files ? "" : "?files=0"}`}`;
+
+export const useDeleteWorkspace = () => {
+  const refresh = useRefreshSession();
+  return useMutation({
+    mutationFn: (confirmName: string) => api.delete("/workspaces/current", { data: { confirmName } }),
+    onSuccess: refresh,
   });
 };

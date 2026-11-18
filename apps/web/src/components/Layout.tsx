@@ -7,6 +7,7 @@ import {
   MessageSquare,
   Users,
   Database,
+  Settings,
   User,
   LogOut,
   Search,
@@ -33,6 +34,7 @@ const navItems = [
   { label: "Chat", icon: MessageSquare, path: "/chat" },
   { label: "Team", icon: Users, path: "/team" },
   { label: "Knowledge", icon: Database, path: "/knowledge" },
+  { label: "Settings", icon: Settings, path: "/settings" },
 ];
 
 const openPalette = () => window.dispatchEvent(new Event("open-cmdk"));

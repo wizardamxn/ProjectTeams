@@ -8,6 +8,7 @@ import { Membership } from "../../models/membership.js";
 import { User, type UserDoc } from "../../models/user.js";
 import { Workspace } from "../../models/workspace.js";
 import type { WorkspaceContext } from "../workspaces/workspaces.service.js";
+import { auditService } from "../audit/audit.service.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -55,6 +56,13 @@ export const invitesService = {
       maxUses: input.email ? 1 : input.maxUses,
     });
 
+    auditService.record(
+      ctx,
+      "invite.created",
+      { type: "invite", id: invite._id.toString(), label: input.email ?? "Invite link" },
+      { role: input.role, expiresInDays: input.expiresInDays, ...(input.maxUses && !input.email ? { maxUses: input.maxUses } : {}) },
+    );
+
     if (input.email) {
       const url = inviteUrl(invite.token);
       const ws = validator.escape(ctx.workspace.name);
@@ -84,6 +92,7 @@ export const invitesService = {
     if (!invite) throw notFound("Invite not found");
     invite.revokedAt = new Date();
     await invite.save();
+    auditService.record(ctx, "invite.revoked", { type: "invite", id: invite._id.toString(), label: invite.email ?? "Invite link" });
   },
 
   /** Public preview for the invite page. Reveals only what the invitee needs to decide. */
@@ -105,7 +114,7 @@ export const invitesService = {
   },
 
   /** Joins the workspace (or just switches to it if already a member). */
-  async accept(user: UserDoc, token: string) {
+  async accept(user: UserDoc, token: string, ip?: string) {
     const invite = await Invite.findOne({ token });
     if (!invite || !isInviteUsable(invite)) throw notFound("This invite link is invalid or has expired");
     if (invite.email && invite.email !== user.email) {
@@ -129,6 +138,14 @@ export const invitesService = {
         { workspaceId: invite.workspaceId, userId: user._id },
         { $setOnInsert: { role: invite.role } },
         { upsert: true },
+      );
+      auditService.recordFor(
+        invite.workspaceId,
+        user,
+        "member.joined",
+        { type: "member", id: user._id.toString(), label: `${user.fullName} (${user.email})` },
+        { role: invite.role, via: invite.email ? "email invite" : "invite link" },
+        ip,
       );
     }
 

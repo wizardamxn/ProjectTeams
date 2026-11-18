@@ -13,6 +13,7 @@ import { Message } from "../../models/message.js";
 import { Notification } from "../../models/notification.js";
 import { User } from "../../models/user.js";
 import type { WorkspaceContext } from "../workspaces/workspaces.service.js";
+import { auditService } from "../audit/audit.service.js";
 
 export const MAX_GROUP_SIZE = 8; // including you
 
@@ -265,6 +266,7 @@ export const conversationsService = {
     });
     const others = await workspaceMemberIds(ctx, input.memberIds ?? []);
     await join(channel, [ctx.user._id, ...others]);
+    auditService.record(ctx, "channel.created", { type: "channel", id: channel._id.toString(), label: `#${name}` }, { private: channel.isPrivate });
     return channel;
   },
 
@@ -323,6 +325,7 @@ export const conversationsService = {
     if (conversation.type !== "channel") throw badRequest("Only channels have a name and topic");
     const canEdit = conversation.createdBy.equals(ctx.user._id) || atLeast(ctx.membership.role, "admin");
     if (!canEdit) throw forbidden("Only the channel's creator or an admin can change it");
+    const previousName = conversation.name;
     if (input.name !== undefined) {
       if (conversation.isDefault) throw badRequest(`#${conversation.name} can't be renamed`);
       const name = channelName(input.name);
@@ -330,9 +333,13 @@ export const conversationsService = {
       conversation.name = name;
     }
     if (input.topic !== undefined) conversation.topic = input.topic;
-    return conversation.save().catch((err) => {
+    const saved = await conversation.save().catch((err) => {
       throw isDuplicate(err) ? conflict(`#${conversation.name} already exists`) : err;
     });
+    if (previousName !== saved.name) {
+      auditService.record(ctx, "channel.renamed", { type: "channel", id: saved._id.toString(), label: `#${saved.name}` }, { from: `#${previousName}` });
+    }
+    return saved;
   },
 
   /** The DM (1 other person) or group (2-7 others) with exactly these people; created if new. */

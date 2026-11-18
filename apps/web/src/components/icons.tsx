@@ -69,6 +69,9 @@ import {
   Cancel01Icon,
   CancelCircleIcon,
   FlashIcon,
+  Download04Icon,
+  Alert02Icon,
+  Activity01Icon,
 } from "@hugeicons/core-free-icons";
 
 export interface IconProps
@@ -155,3 +158,6 @@ export const Settings = make(Settings01Icon, "Settings");
 export const DoorExit = make(Door01Icon, "DoorExit");
 export const UserRemove = make(UserRemove01Icon, "UserRemove");
 export const Bell = make(Notification03Icon, "Bell");
+export const Download = make(Download04Icon, "Download");
+export const AlertTriangle = make(Alert02Icon, "AlertTriangle");
+export const Activity = make(Activity01Icon, "Activity");

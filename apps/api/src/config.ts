@@ -56,6 +56,9 @@ const schema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   SUPABASE_BUCKET: z.string().optional(),
 
+  // How long audit log events are kept before they expire.
+  AUDIT_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(365),
+
   REDIS_URL: z.string().default("redis://localhost:6379"),
   // Skip background indexing jobs entirely (tests, or running without Redis).
   QUEUE_DISABLED: z

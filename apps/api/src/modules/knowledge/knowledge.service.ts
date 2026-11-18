@@ -11,6 +11,7 @@ import { RagDocument, type RagDocumentDoc } from "../../models/ragDocument.js";
 import type { WorkspaceContext } from "../workspaces/workspaces.service.js";
 import { enqueueIngest } from "../../queues/ragQueue.js";
 import { safeFileName } from "./ingest.js";
+import { auditService } from "../audit/audit.service.js";
 
 export interface RetrievedChunk {
   _id: Types.ObjectId;
@@ -85,6 +86,7 @@ export const knowledgeService = {
       teamId: ctx.key,
       uploadedBy: ctx.user._id,
     });
+    auditService.record(ctx, "file.uploaded", { type: "file", id: doc._id.toString(), label: doc.fileName }, { size: file.size });
     // New files are indexed straight away (the "Index" button is only for retries).
     await this.startIndexing(ctx, doc._id.toString()).catch((err) =>
       logger.warn({ err, documentId: doc._id.toString() }, "Could not queue file indexing"),
@@ -136,6 +138,7 @@ export const knowledgeService = {
       logger.error({ err, path: doc.storagePath }, "Could not remove file from storage"),
     );
     await doc.deleteOne();
+    auditService.record(ctx, "file.deleted", { type: "file", id: doc._id.toString(), label: doc.fileName });
   },
 
   /** Nearest chunks to `question`, restricted to the workspace inside the vector index. */

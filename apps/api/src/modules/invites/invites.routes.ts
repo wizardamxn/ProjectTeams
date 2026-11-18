@@ -17,5 +17,5 @@ invitesRouter.get("/:token", async (req, res) => {
 });
 
 invitesRouter.post("/:token/accept", requireAuth, async (req, res) => {
-  res.json(await invitesService.accept(currentUser(req), tokenOf(req.params.token)));
+  res.json(await invitesService.accept(currentUser(req), tokenOf(req.params.token), req.ip));
 });

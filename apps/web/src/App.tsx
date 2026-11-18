@@ -25,6 +25,7 @@ import NotFound from "./pages/NotFound";
 import ProfilePage from "./pages/Profile";
 import Create from "./pages/Create";
 import Knowledge from "./pages/Knowledge";
+import Settings from "./pages/Settings";
 import RAGDocDetail from "./pages/RAGDocDetail";
 import ProtectedRoute, { RequireWorkspace } from "./components/ProtectedRoute";
 import Onboarding from "./pages/Onboarding";
@@ -56,6 +57,7 @@ const router = createBrowserRouter([
               { path: "/team", element: <Team /> },
               { path: "/profile", element: <ProfilePage /> },
               { path: "/knowledge", element: <Knowledge /> },
+              { path: "/settings", element: <Settings /> },
               { path: "/knowledge/files/:id", element: <RAGDocDetail /> },
               { path: "/rag-docs/*", element: <Navigate to="/knowledge" replace /> },
               { path: "/create", element: <Create /> },

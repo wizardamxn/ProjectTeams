@@ -10,6 +10,7 @@ Team chat, shared docs and an AI knowledge base you can ask questions, in one wo
 - **Search**: Ctrl/⌘K searches docs, files and the messages you can see.
 - **AI in chat**: "Catch up" summarises the last 24 hours of a conversation; "Turn into doc" writes a doc from a thread.
 - **Workspaces**: create workspaces, invite people by link or email, owner/admin/member roles, switch between workspaces.
+- **Admin**: audit log of who did what (filter, CSV download), workspace export as a zip (docs as Markdown, public channels, members, files), "download my data" for everyone, and delete workspace.
 - **Sign-in**: email + password or Google; password reset by email; light and dark themes.
 
 ## Repo layout
@@ -122,5 +123,5 @@ See [`deploy/nginx.conf.example`](deploy/nginx.conf.example) and [`apps/api/ecos
 3. ✅ Workspaces: real workspaces, invite links, roles, Google sign-in, onboarding, light theme
 4. ✅ Chat v2: channels, threads, unread counts, real presence, notifications
 5. ✅ Docs v2 + Knowledge: rich-text editor, one searchable knowledge base, cited answers
-6. Business: billing, audit log, export
+6. ✅ Business: audit log, export, delete workspace, pricing on the landing page (billing later)
 7. Collaboration: live co-editing, comments, integrations

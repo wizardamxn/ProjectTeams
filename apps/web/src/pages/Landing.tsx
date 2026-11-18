@@ -27,6 +27,7 @@ import {
 } from "@/components/ace/card-3d";
 import { InfiniteMovingCards } from "@/components/ace/infinite-moving-cards";
 import { WobbleCard } from "@/components/ace/wobble-card";
+import { Pricing } from "@/components/landing/Pricing";
 
 /* ---------- Brand mark ---------- */
 const BrandMark = ({ className = "" }: { className?: string }) => (
@@ -65,7 +66,7 @@ const FloatingNav = ({ isAuthed }: { isAuthed: boolean }) => {
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
-          {["Features", "How it works", "Testimonials"].map((label) => (
+          {["Features", "How it works", "Pricing"].map((label) => (
             <a
               key={label}
               href={`#${label.toLowerCase().replace(/\s+/g, "-")}`}
@@ -636,6 +637,9 @@ export default function Landing() {
         />
       </section>
 
+      {/* ============ PRICING ============ */}
+      <Pricing isAuthed={isAuthed} />
+
       {/* ============ FINAL CTA ============ */}
       <section className="relative overflow-hidden border-t border-white/[0.06] bg-zinc-950 py-28">
         <div className="bg-grid mask-radial-faded pointer-events-none absolute inset-0 opacity-[0.3]" />
@@ -681,6 +685,9 @@ export default function Landing() {
             </a>
             <a href="#how-it-works" className="transition-colors hover:text-white">
               How it works
+            </a>
+            <a href="#pricing" className="transition-colors hover:text-white">
+              Pricing
             </a>
             <Link to="/login" className="transition-colors hover:text-white">
               Sign in

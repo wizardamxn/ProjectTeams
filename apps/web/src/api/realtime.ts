@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import socket from "@/utils/socket";
 import { useAppSelector } from "@/store/hooks";
 import { keys } from "./queryClient";
+import { useRefreshSession } from "./workspaces";
 import { patchConversation, upsertThreadMessage, upsertTimelineMessage, type Typist } from "./chat";
 import type { AppNotification, Conversation, Message } from "./types";
 
@@ -25,6 +26,9 @@ export function useRealtime() {
   const qc = useQueryClient();
   const myId = useAppSelector((s) => s.user.user?._id);
   const navigate = useNavigate();
+  const refreshSession = useRefreshSession();
+  const refreshRef = useRef(refreshSession);
+  refreshRef.current = refreshSession;
 
   useEffect(() => {
     const requestPresence = () =>
@@ -100,7 +104,16 @@ export function useRealtime() {
       });
     };
 
+    // Someone deleted a workspace you're in: drop its data and reload where you are.
+    const onWorkspaceDeleted = ({ name, by }: { workspaceId: string; name: string; by: string }) => {
+      if (by === myId) return; // the owner's own tab handles this itself
+      toast(`${name} was deleted by its owner`);
+      void refreshRef.current().catch(() => undefined);
+      navigate("/dashboard", { replace: true });
+    };
+
     socket.on("connect", onConnect);
+    socket.on("workspace:deleted", onWorkspaceDeleted);
     socket.on("message:new", onMessageNew);
     socket.on("message:updated", onMessageUpdated);
     socket.on("notification:new", onNotification);
@@ -110,6 +123,7 @@ export function useRealtime() {
 
     return () => {
       socket.off("connect", onConnect);
+      socket.off("workspace:deleted", onWorkspaceDeleted);
       socket.off("message:new", onMessageNew);
       socket.off("message:updated", onMessageUpdated);
       socket.off("notification:new", onNotification);

@@ -3,6 +3,8 @@ import { currentUser, requireAuth } from "../../middleware/auth.js";
 import { ctxOf, requireWorkspace } from "../../middleware/workspace.js";
 import { workspacesService } from "../workspaces/workspaces.service.js";
 import { usersService } from "./users.service.js";
+import { exportService } from "../export/export.service.js";
+import { exportLimiter } from "../../middleware/rateLimits.js";
 
 /** GET /api/me — who you are, where you're working, and where else you could be. */
 export const meRouter = Router();
@@ -16,6 +18,11 @@ meRouter.get("/", requireAuth, async (req, res) => {
     role: ctx?.membership.role ?? null,
     workspaces: await workspacesService.listForUser(user),
   });
+});
+
+/** GET /api/me/export — a zip of your own data (profile, docs you wrote, every message you sent). */
+meRouter.get("/export", requireAuth, exportLimiter, async (req, res) => {
+  await exportService.personal(currentUser(req), res);
 });
 
 // Mounted at /api/profile (paths kept for frontend compatibility).

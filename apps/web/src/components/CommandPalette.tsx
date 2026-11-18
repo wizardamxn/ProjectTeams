@@ -6,6 +6,7 @@ import {
   MessageSquare,
   Users,
   Database,
+  Settings,
   User,
   Plus,
   UserPlus,
@@ -102,6 +103,7 @@ export default function CommandPalette() {
     { label: "Chat", icon: MessageSquare, to: "/chat" },
     { label: "Team", icon: Users, to: "/team" },
     { label: "Knowledge", icon: Database, to: "/knowledge" },
+    { label: "Settings", icon: Settings, to: "/settings" },
     { label: "Profile", icon: User, to: "/profile" },
   ];
 

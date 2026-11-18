@@ -12,7 +12,7 @@ import { currentUser } from "./auth.js";
 export const requireWorkspace = async (req: Request, _res: Response, next: NextFunction) => {
   const ctx = await workspacesService.resolveActive(currentUser(req));
   if (!ctx) throw new AppError(409, "Create or join a workspace first", "no_workspace");
-  req.ctx = ctx;
+  req.ctx = { ...ctx, ip: req.ip };
   next();
 };
 

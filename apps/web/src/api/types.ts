@@ -258,3 +258,45 @@ export interface SearchResults {
     createdAt: string;
   }[];
 }
+
+/* ---- Audit log ---- */
+
+export const AUDIT_ACTIONS = [
+  "workspace.renamed",
+  "workspace.exported",
+  "member.joined",
+  "member.left",
+  "member.removed",
+  "member.role_changed",
+  "ownership.transferred",
+  "invite.created",
+  "invite.revoked",
+  "channel.created",
+  "channel.renamed",
+  "doc.deleted",
+  "doc.version_restored",
+  "folder.deleted",
+  "file.uploaded",
+  "file.deleted",
+] as const;
+export type AuditAction = (typeof AUDIT_ACTIONS)[number];
+
+export interface AuditEvent {
+  _id: string;
+  action: AuditAction;
+  actor: { _id: string | null; name: string };
+  target: { type: string; id?: string; label?: string } | null;
+  meta: Record<string, unknown> | null;
+  ip: string | null;
+  createdAt: string;
+}
+
+export interface AuditPage {
+  items: AuditEvent[];
+  nextCursor: string | null;
+}
+
+export interface AuditFilter {
+  action?: AuditAction;
+  actorId?: string;
+}

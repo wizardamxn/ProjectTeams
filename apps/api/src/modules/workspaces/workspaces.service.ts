@@ -4,6 +4,7 @@ import { Membership, type MembershipDoc, type Role } from "../../models/membersh
 import { User, type UserDoc } from "../../models/user.js";
 import { Workspace, type WorkspaceDoc } from "../../models/workspace.js";
 import { migrateLegacyTeam } from "./legacyMigration.js";
+import { auditService } from "../audit/audit.service.js";
 
 /** Everything a request needs to know about where the user is working. */
 export interface WorkspaceContext {
@@ -12,6 +13,8 @@ export interface WorkspaceContext {
   membership: MembershipDoc;
   /** The workspace id as stored on docs, files and chunks (`teamId`). */
   key: string;
+  /** Client IP of the current request, for the audit log. */
+  ip?: string;
 }
 
 const toContext = (user: UserDoc, workspace: WorkspaceDoc, membership: MembershipDoc): WorkspaceContext => ({
@@ -27,6 +30,12 @@ const setActive = async (user: UserDoc, workspaceId: Types.ObjectId | undefined)
     { _id: user._id },
     workspaceId ? { $set: { activeWorkspaceId: workspaceId } } : { $unset: { activeWorkspaceId: 1 } },
   );
+};
+
+/** "Name (email)" for the audit log. */
+const memberLabel = async (userId: Types.ObjectId) => {
+  const u = await User.findById(userId).select("fullName email").lean();
+  return u ? `${u.fullName} (${u.email})` : "Unknown user";
 };
 
 export const workspacesService = {
@@ -80,8 +89,11 @@ export const workspacesService = {
   },
 
   async rename(ctx: WorkspaceContext, name: string) {
+    const from = ctx.workspace.name;
     ctx.workspace.name = name;
-    return ctx.workspace.save();
+    const saved = await ctx.workspace.save();
+    if (from !== name) auditService.record(ctx, "workspace.renamed", { type: "workspace", id: ctx.key, label: name }, { from, to: name });
+    return saved;
   },
 
   async listMembers(ctx: WorkspaceContext) {
@@ -110,15 +122,19 @@ export const workspacesService = {
 
     const target = await Membership.findOne({ workspaceId: ctx.workspace._id, userId: targetUserId });
     if (!target) throw notFound("Member not found");
+    const from = target.role;
+    const who = await memberLabel(target.userId);
 
     if (role === "owner") {
       target.role = "owner";
       ctx.membership.role = "admin";
       await target.save();
       await ctx.membership.save();
+      auditService.record(ctx, "ownership.transferred", { type: "member", id: targetUserId, label: who });
     } else {
       target.role = role;
       await target.save();
+      if (from !== role) auditService.record(ctx, "member.role_changed", { type: "member", id: targetUserId, label: who }, { from, to: role });
     }
     return target;
   },
@@ -134,6 +150,7 @@ export const workspacesService = {
     if (!allowed) throw forbidden("You can't remove this member");
 
     await target.deleteOne();
+    auditService.record(ctx, "member.removed", { type: "member", id: targetUserId, label: await memberLabel(target.userId) }, { role: target.role });
   },
 
   async leave(ctx: WorkspaceContext) {
@@ -142,6 +159,7 @@ export const workspacesService = {
     }
     await ctx.membership.deleteOne();
     await setActive(ctx.user, undefined);
+    auditService.record(ctx, "member.left", { type: "member", id: ctx.user._id.toString(), label: ctx.user.fullName });
   },
 
   /** True if both users belong to the context's workspace. Used for DMs. */
