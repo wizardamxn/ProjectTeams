@@ -61,5 +61,6 @@ const messageSchema = new Schema<IMessage>(
 // Main timeline (top-level messages, newest first) and thread replies.
 messageSchema.index({ conversationId: 1, threadRootId: 1, _id: -1 });
 messageSchema.index({ threadRootId: 1, _id: 1 });
+messageSchema.index({ text: "text" }, { name: "message_text" });
 
 export const Message = mongoose.model<IMessage>("Message", messageSchema);

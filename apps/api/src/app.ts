@@ -10,6 +10,7 @@ import { aiRouter } from "./modules/ai/ai.routes.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { conversationsRouter, messagesRouter } from "./modules/chat/chat.routes.js";
 import { notificationsRouter } from "./modules/notifications/notifications.routes.js";
+import { searchRouter } from "./modules/search/search.routes.js";
 import { docsRouter } from "./modules/docs/docs.routes.js";
 import { knowledgeRouter } from "./modules/knowledge/knowledge.routes.js";
 import { meRouter, usersRouter } from "./modules/users/users.routes.js";
@@ -46,6 +47,7 @@ export const createApp = () => {
   app.use("/api/conversations", conversationsRouter);
   app.use("/api/messages", messagesRouter);
   app.use("/api/notifications", notificationsRouter);
+  app.use("/api/search", searchRouter);
   app.use("/api/ai", aiRouter);
   app.use("/api/upload", knowledgeRouter);
 

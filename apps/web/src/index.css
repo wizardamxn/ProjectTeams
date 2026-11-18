@@ -375,3 +375,43 @@
 .light .text-gradient {
   color: hsl(162 80% 30%);
 }
+
+/* =========================================
+   6. RICH TEXT (docs editor and previews)
+   ========================================= */
+.rich-text {
+  color: var(--color-zinc-300);
+  font-size: 1rem;
+  line-height: 1.75;
+  min-height: 50vh;
+}
+.rich-text > * + * { margin-top: 0.75em; }
+.rich-text h1 { font-size: 1.875rem; line-height: 1.25; font-weight: 700; color: var(--color-zinc-100); margin-top: 1.5em; }
+.rich-text h2 { font-size: 1.5rem; line-height: 1.3; font-weight: 700; color: var(--color-zinc-100); margin-top: 1.4em; }
+.rich-text h3 { font-size: 1.2rem; line-height: 1.4; font-weight: 600; color: var(--color-zinc-100); margin-top: 1.2em; }
+.rich-text > :first-child { margin-top: 0; }
+.rich-text a { color: var(--color-emerald-400); text-decoration: underline; text-underline-offset: 2px; }
+.rich-text strong { color: var(--color-zinc-100); }
+.rich-text ul { list-style: disc; padding-left: 1.5rem; }
+.rich-text ol { list-style: decimal; padding-left: 1.5rem; }
+.rich-text li > p { margin: 0; }
+.rich-text li + li { margin-top: 0.25em; }
+.rich-text blockquote { border-left: 3px solid var(--color-zinc-700); padding-left: 1rem; color: var(--color-zinc-400); font-style: italic; }
+.rich-text code { background: var(--color-zinc-800); border-radius: 0.3rem; padding: 0.1em 0.35em; font-size: 0.875em; font-family: var(--font-mono); color: var(--color-zinc-100); }
+.rich-text pre { background: var(--color-zinc-900); border: 1px solid var(--color-zinc-800); border-radius: 0.6rem; padding: 0.9rem 1rem; overflow-x: auto; }
+.rich-text pre code { background: none; padding: 0; font-size: 0.85rem; }
+.rich-text hr { border: none; border-top: 1px solid var(--color-zinc-800); margin: 1.5em 0; }
+.rich-text ul[data-type="taskList"] { list-style: none; padding-left: 0.25rem; }
+.rich-text ul[data-type="taskList"] li { display: flex; gap: 0.6rem; align-items: flex-start; }
+.rich-text ul[data-type="taskList"] li > label { margin-top: 0.35rem; user-select: none; }
+.rich-text ul[data-type="taskList"] li > label input { accent-color: var(--color-emerald-500); width: 1rem; height: 1rem; cursor: pointer; }
+.rich-text ul[data-type="taskList"] li > div { flex: 1; }
+.rich-text ul[data-type="taskList"] li[data-checked="true"] > div { color: var(--color-zinc-500); text-decoration: line-through; }
+.rich-text p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--color-zinc-600);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.rich-text ::selection { background: hsl(var(--brand-emerald) / 0.3); }

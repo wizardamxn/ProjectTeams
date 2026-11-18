@@ -28,6 +28,10 @@ knowledgeRouter.post("/document", upload.single("document"), async (req, res) =>
   res.status(201).json({ message: "Document uploaded successfully", document });
 });
 
+knowledgeRouter.get("/stats", async (req, res) => {
+  res.json(await knowledgeService.stats(ctxOf(req)));
+});
+
 knowledgeRouter.get("/documents", async (req, res) => {
   res.json(await knowledgeService.list(ctxOf(req)));
 });

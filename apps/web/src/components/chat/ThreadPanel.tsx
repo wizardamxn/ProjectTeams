@@ -1,5 +1,9 @@
 import { useEffect, useRef } from "react";
-import { Loader2, X } from "@/components/icons";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { FileText, Loader2, X } from "@/components/icons";
+import { useThreadToDoc } from "@/api/ai";
+import { errorMessage } from "@/lib/api";
 import { useThread } from "@/api/chat";
 import type { Person } from "@/api/types";
 import { Composer } from "./Composer";
@@ -21,6 +25,18 @@ interface Props {
 export function ThreadPanel({ conversationId, rootId, title, myId, isAdmin, people, mentionable, onClose }: Props) {
   const { data, isLoading, isError } = useThread(conversationId, rootId);
   const end = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const toDoc = useThreadToDoc();
+
+  const makeDoc = () =>
+    toDoc.mutate(
+      { conversationId, rootId },
+      {
+        onSuccess: (doc) =>
+          toast.success(`Created "${doc.title}"`, { action: { label: "Open", onClick: () => navigate(`/editor/${doc._id}`) } }),
+        onError: (err) => toast.error(errorMessage(err, "Couldn't create a doc from this thread")),
+      },
+    );
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
@@ -33,9 +49,21 @@ export function ThreadPanel({ conversationId, rootId, title, myId, isAdmin, peop
           <h2 className="text-sm font-semibold text-zinc-100">Thread</h2>
           <p className="truncate text-xs text-zinc-500">{title}</p>
         </div>
-        <button onClick={onClose} className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white" aria-label="Close thread">
-          <X className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          {data && !data.root.deleted && (
+            <button
+              onClick={makeDoc}
+              disabled={toDoc.isPending}
+              className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-white disabled:opacity-60"
+              title="Write a doc from this thread with AI"
+            >
+              {toDoc.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />} Turn into doc
+            </button>
+          )}
+          <button onClick={onClose} className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white" aria-label="Close thread">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </header>
 
       <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto py-2">

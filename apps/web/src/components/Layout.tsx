@@ -32,7 +32,7 @@ const navItems = [
   { label: "Documents", icon: FileText, path: "/documents" },
   { label: "Chat", icon: MessageSquare, path: "/chat" },
   { label: "Team", icon: Users, path: "/team" },
-  { label: "RAG Docs", icon: Database, path: "/rag-docs" },
+  { label: "Knowledge", icon: Database, path: "/knowledge" },
 ];
 
 const openPalette = () => window.dispatchEvent(new Event("open-cmdk"));

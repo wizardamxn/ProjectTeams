@@ -20,6 +20,8 @@ export interface IConversation {
   dmKey?: string;
   createdBy: Types.ObjectId;
   lastMessageAt?: Date;
+  /** Public channels: newest message already in the knowledge index. */
+  indexedUntil?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,6 +39,7 @@ const conversationSchema = new Schema<IConversation>(
     dmKey: { type: String },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     lastMessageAt: { type: Date },
+    indexedUntil: { type: Schema.Types.ObjectId },
   },
   { timestamps: true },
 );

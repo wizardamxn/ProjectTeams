@@ -46,7 +46,7 @@ export default function RAGDocDetail() {
   const handleDelete = () => {
     if (!id || !confirm("Delete this document? This cannot be undone.")) return;
     deleteDoc.mutate(id, {
-      onSuccess: () => navigate("/rag-docs"),
+      onSuccess: () => navigate("/knowledge"),
       onError: (err) => setActionError(errorMessage(err, "Failed to delete document")),
     });
   };
@@ -75,10 +75,10 @@ export default function RAGDocDetail() {
           {error ?? "Document not found"}
         </p>
         <button
-          onClick={() => navigate("/rag-docs")}
+          onClick={() => navigate("/knowledge")}
           className="text-sm text-emerald-500 hover:text-emerald-400 font-medium"
         >
-          &larr; Back to RAG Docs
+          &larr; Back to Knowledge
         </button>
       </div>
     );
@@ -93,7 +93,7 @@ export default function RAGDocDetail() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
               <div className="flex items-center gap-3 min-w-0">
                 <button
-                  onClick={() => navigate("/rag-docs")}
+                  onClick={() => navigate("/knowledge")}
                   className="p-2 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-white transition-colors shrink-0"
                 >
                   <ArrowLeft className="w-5 h-5" />

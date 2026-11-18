@@ -1,46 +1,102 @@
 import { Router } from "express";
 import { requireAuth } from "../../middleware/auth.js";
-import { ctxOf, requireWorkspace } from "../../middleware/workspace.js";
 import { requireObjectIds, validateBody } from "../../middleware/validate.js";
-import { createDocSchema, updateDocSchema } from "./docs.schemas.js";
-import { docsService } from "./docs.service.js";
+import { ctxOf, requireWorkspace } from "../../middleware/workspace.js";
+import { createDocSchema, folderSchema, updateDocSchema } from "./docs.schemas.js";
+import { docsService, presentDoc } from "./docs.service.js";
 
-// Mounted at /api/doc (paths kept for frontend compatibility).
+// Mounted at /api/doc (original paths kept so older clients keep working).
 export const docsRouter = Router();
 
 docsRouter.use(requireAuth, requireWorkspace);
-docsRouter.param("doc_id", (req, _res, next) => requireObjectIds("doc_id")(req, _res, next));
+docsRouter.param("doc_id", (req, res, next) => requireObjectIds("doc_id")(req, res, next));
+
+const id = (v: unknown) => String(v);
 
 docsRouter.post("/create", validateBody(createDocSchema), async (req, res) => {
-  const document = await docsService.create(ctxOf(req), req.body);
-  res.status(201).json({ message: "Document Created Successfully", document });
+  const ctx = ctxOf(req);
+  const doc = await docsService.create(ctx, req.body);
+  res.status(201).json({ message: "Document Created Successfully", document: presentDoc(doc, ctx, { full: true }) });
+});
+
+/** ?folderId=<id>|none &starred=1 &mine=1 */
+docsRouter.get("/list", async (req, res) => {
+  const ctx = ctxOf(req);
+  const docs = await docsService.list(ctx, {
+    folderId: typeof req.query.folderId === "string" ? req.query.folderId : undefined,
+    starred: req.query.starred === "1",
+    mine: req.query.mine === "1",
+  });
+  res.json(docs.map((d) => presentDoc(d, ctx)));
 });
 
 docsRouter.get("/viewdocs", async (req, res) => {
-  res.json(await docsService.listMine(ctxOf(req)));
+  const ctx = ctxOf(req);
+  res.json((await docsService.list(ctx, { mine: true })).map((d) => presentDoc(d, ctx)));
 });
 
 docsRouter.get("/teamdocs", async (req, res) => {
-  res.json(await docsService.listTeam(ctxOf(req)));
+  const ctx = ctxOf(req);
+  res.json((await docsService.list(ctx)).map((d) => presentDoc(d, ctx)));
 });
 
 docsRouter.get("/starred", async (req, res) => {
-  res.json(await docsService.listStarred(ctxOf(req)));
+  const ctx = ctxOf(req);
+  res.json((await docsService.list(ctx, { starred: true })).map((d) => presentDoc(d, ctx)));
 });
 
 docsRouter.get("/doc/:doc_id", async (req, res) => {
-  res.json(await docsService.get(ctxOf(req), String(req.params.doc_id)));
+  const ctx = ctxOf(req);
+  res.json(presentDoc(await docsService.get(ctx, id(req.params.doc_id)), ctx, { full: true }));
 });
 
 docsRouter.put("/edit/:doc_id", validateBody(updateDocSchema), async (req, res) => {
-  res.json(await docsService.update(ctxOf(req), String(req.params.doc_id), req.body));
+  const ctx = ctxOf(req);
+  res.json(presentDoc(await docsService.update(ctx, id(req.params.doc_id), req.body), ctx, { full: true }));
 });
 
 docsRouter.put("/star/:doc_id", async (req, res) => {
-  res.json(await docsService.toggleStar(ctxOf(req), String(req.params.doc_id)));
+  const ctx = ctxOf(req);
+  res.json(presentDoc(await docsService.toggleStar(ctx, id(req.params.doc_id)), ctx));
 });
 
 docsRouter.delete("/teamdocs/:doc_id", async (req, res) => {
-  await docsService.remove(ctxOf(req), String(req.params.doc_id));
+  await docsService.remove(ctxOf(req), id(req.params.doc_id));
   res.json({ message: "Document deleted" });
+});
+
+/* ---- History ---- */
+
+docsRouter.get("/doc/:doc_id/versions", async (req, res) => {
+  res.json(await docsService.listVersions(ctxOf(req), id(req.params.doc_id)));
+});
+
+docsRouter.get("/doc/:doc_id/versions/:versionId", async (req, res) => {
+  res.json(await docsService.getVersion(ctxOf(req), id(req.params.doc_id), id(req.params.versionId)));
+});
+
+docsRouter.post("/doc/:doc_id/versions/:versionId/restore", async (req, res) => {
+  const ctx = ctxOf(req);
+  res.json(presentDoc(await docsService.restoreVersion(ctx, id(req.params.doc_id), id(req.params.versionId)), ctx, { full: true }));
+});
+
+/* ---- Folders: /api/doc/folders ---- */
+
+docsRouter.get("/folders", async (req, res) => {
+  res.json(await docsService.listFolders(ctxOf(req)));
+});
+
+docsRouter.post("/folders", validateBody(folderSchema), async (req, res) => {
+  const f = await docsService.createFolder(ctxOf(req), req.body.name);
+  res.status(201).json({ _id: f._id.toString(), name: f.name, docCount: 0 });
+});
+
+docsRouter.patch("/folders/:folderId", requireObjectIds("folderId"), validateBody(folderSchema), async (req, res) => {
+  const f = await docsService.renameFolder(ctxOf(req), id(req.params.folderId), req.body.name);
+  res.json({ _id: f._id.toString(), name: f.name });
+});
+
+docsRouter.delete("/folders/:folderId", requireObjectIds("folderId"), async (req, res) => {
+  await docsService.deleteFolder(ctxOf(req), id(req.params.folderId));
+  res.json({ ok: true });
 });

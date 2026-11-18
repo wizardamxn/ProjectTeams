@@ -12,6 +12,8 @@ vi.mock("../../src/lib/storage.js", () => ({
 }));
 vi.mock("../../src/queues/ragQueue.js", () => ({
   enqueueIngest: vi.fn(async (job: unknown) => void enqueued.push(job)),
+  enqueueDocIndex: vi.fn(async () => null),
+  enqueueChatIndex: vi.fn(async () => null),
 }));
 
 const { createApp } = await import("../../src/app.js");
@@ -39,7 +41,7 @@ describe("knowledge uploads", () => {
     const doc = res.body.document;
     expect(doc.storagePath).toMatch(new RegExp(`^${workspaceId}/\\d+-notes_v1_.txt$`));
     expect(doc.fileUrl).toMatch(/^https:\/\/signed\.example\//);
-    expect(doc.ragStatus).toBe("uploaded");
+    expect(doc.ragStatus).toBe("processing"); // indexing starts on upload
   });
 
   it("rejects file types the indexer can't read", async () => {
@@ -65,7 +67,7 @@ describe("knowledge uploads", () => {
     expect((await mallory.agent.get("/api/upload/documents").expect(200)).body).toHaveLength(0);
   });
 
-  it("queues indexing once and refuses to double-queue", async () => {
+  it("queues indexing on upload, once", async () => {
     const { agent } = await signUp(app);
     const up = await agent
       .post("/api/upload/document")
@@ -73,8 +75,8 @@ describe("knowledge uploads", () => {
       .expect(201);
     const id = up.body.document._id;
 
-    await agent.post(`/api/upload/document/${id}/ragify`).expect(202);
-    await agent.post(`/api/upload/document/${id}/ragify`).expect(409);
+    expect(enqueued).toHaveLength(1);
+    await agent.post(`/api/upload/document/${id}/ragify`).expect(409); // already processing
     expect(enqueued).toHaveLength(1);
   });
 

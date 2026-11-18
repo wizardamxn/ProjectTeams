@@ -6,10 +6,12 @@ import { storage } from "../lib/storage.js";
 import { RagChunk } from "../models/ragChunk.js";
 import { RagDocument } from "../models/ragDocument.js";
 import { chunkText, extractText } from "../modules/knowledge/ingest.js";
-import { RAG_QUEUE, type IngestJob } from "./ragQueue.js";
+import { indexChat, indexDoc } from "../modules/knowledge/indexer.js";
+import { RAG_QUEUE, type ChatIndexJob, type DocIndexJob, type IngestJob } from "./ragQueue.js";
 
 const log = logger.child({ queue: RAG_QUEUE });
 
+/** Uploaded file -> text -> chunks -> embeddings. */
 export const processIngestJob = async (job: Job<IngestJob>) => {
   const { documentId, storagePath, mimeType } = job.data;
 
@@ -17,7 +19,7 @@ export const processIngestJob = async (job: Job<IngestJob>) => {
   if (!doc) return { skipped: "document deleted" };
 
   // A retry must start clean, or failed attempts leave duplicate chunks behind.
-  await RagChunk.deleteMany({ documentId });
+  await RagChunk.deleteMany({ $or: [{ documentId }, { sourceType: "file", sourceId: documentId }] });
 
   const text = await extractText(await storage.download(storagePath), mimeType);
   if (!text.trim()) throw new Error("No readable text found (scanned PDFs are not supported yet)");
@@ -27,7 +29,10 @@ export const processIngestJob = async (job: Job<IngestJob>) => {
 
   await RagChunk.insertMany(
     chunks.map((chunk, index) => ({
-      documentId,
+      sourceType: "file",
+      sourceId: doc._id,
+      documentId: doc._id,
+      title: doc.fileName,
       teamId: doc.teamId,
       chunkIndex: index,
       text: chunk,
@@ -36,19 +41,31 @@ export const processIngestJob = async (job: Job<IngestJob>) => {
   );
 
   await RagDocument.findByIdAndUpdate(documentId, { ragStatus: "ready" });
-  log.info({ jobId: job.id, documentId, chars: text.length, chunks: chunks.length }, "Indexed document");
+  log.info({ jobId: job.id, documentId, chars: text.length, chunks: chunks.length }, "Indexed file");
   return { textLength: text.length, chunkCount: chunks.length };
 };
 
+const route = async (job: Job) => {
+  switch (job.name) {
+    case "index-doc":
+      return indexDoc((job.data as DocIndexJob).docId);
+    case "index-chat":
+      return indexChat((job.data as ChatIndexJob).conversationId, (job.data as ChatIndexJob).full);
+    default:
+      return processIngestJob(job as Job<IngestJob>);
+  }
+};
+
 export const startRagWorker = () => {
-  const worker = new Worker<IngestJob>(RAG_QUEUE, processIngestJob, { connection: getRedis() });
+  const worker = new Worker(RAG_QUEUE, route, { connection: getRedis(), concurrency: 2 });
 
   worker.on("failed", async (job, err) => {
-    log.error({ jobId: job?.id, err: err.message, attempt: job?.attemptsMade }, "Job failed");
-    // Only mark the document failed once BullMQ has used up its retries.
+    log.error({ jobId: job?.id, name: job?.name, err: err.message, attempt: job?.attemptsMade }, "Job failed");
+    // Only mark a file failed once BullMQ has used up its retries.
     const attemptsLeft = (job?.opts.attempts ?? 1) - (job?.attemptsMade ?? 0);
-    if (job?.data.documentId && attemptsLeft <= 0) {
-      await RagDocument.findByIdAndUpdate(job.data.documentId, { ragStatus: "failed" });
+    const documentId = (job?.data as Partial<IngestJob> | undefined)?.documentId;
+    if (job?.name === "process-document" && documentId && attemptsLeft <= 0) {
+      await RagDocument.findByIdAndUpdate(documentId, { ragStatus: "failed" });
     }
   });
 

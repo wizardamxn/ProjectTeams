@@ -14,14 +14,22 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { HoverEffect } from "@/components/ace/card-hover-effect";
 import { HoverBorderGradient } from "@/components/ace/hover-border-gradient";
-import { useDeleteDoc, useTeamDocs, useToggleStar } from "@/api/docs";
+import { useCreateFolder, useDeleteDoc, useDeleteFolder, useDocs, useFolders, useRenameFolder, useToggleStar, type DocFilter } from "@/api/docs";
+import { FolderBar, type View } from "@/components/docs/FolderBar";
 import { errorMessage } from "@/lib/api";
 import { formatRelativeTime } from "@/lib/format";
 
 export default function Documents() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const { data: documents = [], isLoading: loading, error: loadError } = useTeamDocs();
+  const [view, setView] = useState<View>({ kind: "all" });
+  const filter: DocFilter =
+    view.kind === "starred" ? { starred: true } : view.kind === "folder" ? { folderId: view.id } : view.kind === "unfiled" ? { folderId: "none" } : {};
+  const { data: documents = [], isLoading: loading, error: loadError } = useDocs(filter);
+  const { data: folders = [] } = useFolders();
+  const createFolder = useCreateFolder();
+  const renameFolder = useRenameFolder();
+  const deleteFolder = useDeleteFolder();
   const error = loadError ? errorMessage(loadError, "Could not load documents") : null;
   const toggleStar = useToggleStar();
   const deleteDoc = useDeleteDoc();
@@ -74,7 +82,7 @@ export default function Documents() {
               className="w-full rounded-full border border-white/10 bg-zinc-900 py-2.5 pl-10 pr-4 text-sm text-zinc-100 outline-none transition-colors placeholder:text-zinc-600 focus:border-emerald-500/50"
             />
           </div>
-          <button onClick={() => navigate("/create")}>
+          <button onClick={() => navigate(view.kind === "folder" ? `/create?folderId=${view.id}` : "/create")}>
             <HoverBorderGradient className="whitespace-nowrap px-4 py-2.5 text-sm font-semibold">
               <span className="flex items-center gap-1.5">
                 <Plus className="h-4 w-4" /> New
@@ -83,6 +91,28 @@ export default function Documents() {
           </button>
         </div>
       </div>
+
+      <FolderBar
+        view={view}
+        onView={setView}
+        folders={folders}
+        onCreate={(name) =>
+          createFolder.mutate(name, {
+            onError: (err) => toast.error(errorMessage(err, "Couldn't create the folder")),
+          })
+        }
+        onRename={(id, name) =>
+          renameFolder.mutate({ id, name }, { onError: (err) => toast.error(errorMessage(err, "Couldn't rename")) })
+        }
+        onDelete={(id) =>
+          deleteFolder.mutate(id, {
+            onSuccess: () => {
+              setView({ kind: "all" });
+              toast.success("Folder deleted. Its documents are still here, without a folder.");
+            },
+          })
+        }
+      />
 
       {/* --- Content --- */}
       {loading ? (
@@ -121,7 +151,7 @@ export default function Documents() {
           items={filteredDocuments}
           onItemClick={(doc) => navigate(`/editor/${doc._id}`)}
           renderItem={(doc) => (
-            <div className="flex h-[224px] cursor-pointer flex-col p-5">
+            <div className="flex h-full min-h-[224px] cursor-pointer flex-col p-5">
               <div className="mb-3 flex items-start justify-between">
                 <div className="flex h-10 w-10 items-center justify-center rounded-md border border-white/[0.06] bg-zinc-800 text-zinc-400">
                   <FileText className="h-5 w-5" />
@@ -145,7 +175,7 @@ export default function Documents() {
                   {doc.title}
                 </h3>
                 <p className="line-clamp-2 text-sm leading-relaxed text-zinc-500">
-                  {doc.summary || "No summary provided."}
+                  {doc.summary || doc.content || "Empty document"}
                 </p>
               </div>
 

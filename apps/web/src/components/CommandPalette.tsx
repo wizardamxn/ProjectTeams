@@ -11,6 +11,7 @@ import {
   UserPlus,
   LogOut,
   CornerDownLeft,
+  Loader2,
 } from "@/components/icons";
 import {
   CommandDialog,
@@ -23,6 +24,9 @@ import {
 import { useTeamDocs } from "@/api/docs";
 import { useTeamMembers } from "@/api/team";
 import { useLogout } from "@/api/auth";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import type { SearchResults } from "@/api/types";
 import { useOpenDirect } from "@/api/chat";
 
 /**
@@ -36,9 +40,27 @@ export default function CommandPalette() {
   const openDirect = useOpenDirect();
 
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  // Server search once the query settles (and is long enough to mean something).
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebounced(query.trim()), 200);
+    return () => window.clearTimeout(t);
+  }, [query]);
+  const { data: results, isFetching: searching } = useQuery({
+    queryKey: ["search", debounced],
+    queryFn: () => api.get<SearchResults>("/search", { params: { q: debounced } }).then((r) => r.data),
+    enabled: open && debounced.length >= 2,
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
+  });
   // Loaded the first time the palette opens, then kept fresh by React Query.
   const [wanted, setWanted] = useState(false);
   const { data: docs = [] } = useTeamDocs({ enabled: wanted });
+  // Docs whose title matches are already listed; don't repeat them under server results.
+  const localDocs = docs.slice(0, 8);
+  const q = query.trim().toLowerCase();
+  const serverDocs = (results?.docs ?? []).filter((d) => !(q && d.title.toLowerCase().includes(q)));
   const { data: members = [] } = useTeamMembers({ enabled: wanted });
 
   useEffect(() => {
@@ -79,13 +101,13 @@ export default function CommandPalette() {
     { label: "Documents", icon: FileText, to: "/documents" },
     { label: "Chat", icon: MessageSquare, to: "/chat" },
     { label: "Team", icon: Users, to: "/team" },
-    { label: "RAG Docs", icon: Database, to: "/rag-docs" },
+    { label: "Knowledge", icon: Database, to: "/knowledge" },
     { label: "Profile", icon: User, to: "/profile" },
   ];
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Search or jump to…" />
+      <CommandInput placeholder="Search docs, files and messages, or jump to…" value={query} onValueChange={setQuery} />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
 
@@ -119,9 +141,9 @@ export default function CommandPalette() {
           </CommandItem>
         </CommandGroup>
 
-        {docs.length > 0 && (
+        {localDocs.length > 0 && (
           <CommandGroup heading="Documents">
-            {docs.slice(0, 8).map((doc) => (
+            {localDocs.map((doc) => (
               <CommandItem
                 key={doc._id}
                 value={`doc ${doc.title}`}
@@ -154,6 +176,58 @@ export default function CommandPalette() {
               </CommandItem>
             ))}
           </CommandGroup>
+        )}
+
+        {results && (
+          <>
+            {serverDocs.length > 0 && (
+              <CommandGroup heading="Matching documents">
+                {serverDocs.map((d) => (
+                  <CommandItem key={d._id} value={`${query} search-doc ${d._id}`} onSelect={() => run(() => navigate(`/editor/${d._id}`))}>
+                    <FileText className="mr-2 h-4 w-4 shrink-0 text-zinc-500" />
+                    <span className="min-w-0">
+                      <span className="block truncate">{d.title}</span>
+                      {d.snippet && <span className="block truncate text-xs text-zinc-500">{d.snippet}</span>}
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {results.files.length > 0 && (
+              <CommandGroup heading="Files">
+                {results.files.map((f) => (
+                  <CommandItem key={f._id} value={`${query} search-file ${f._id}`} onSelect={() => run(() => navigate(`/knowledge/files/${f._id}`))}>
+                    <Database className="mr-2 h-4 w-4 shrink-0 text-zinc-500" />
+                    <span className="truncate">{f.fileName}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {results.messages.length > 0 && (
+              <CommandGroup heading="Messages">
+                {results.messages.map((m) => (
+                  <CommandItem
+                    key={m._id}
+                    value={`${query} search-msg ${m._id}`}
+                    onSelect={() =>
+                      run(() => navigate(`/chat/${m.conversationId}${m.threadRootId ? `?thread=${m.threadRootId}` : ""}`))
+                    }
+                  >
+                    <MessageSquare className="mr-2 h-4 w-4 shrink-0 text-zinc-500" />
+                    <span className="min-w-0">
+                      <span className="block truncate">{m.snippet}</span>
+                      <span className="block truncate text-xs text-zinc-500">{m.sender} in {m.where}</span>
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </>
+        )}
+        {searching && (
+          <div className="flex items-center gap-2 px-4 py-2 text-xs text-zinc-500">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching…
+          </div>
         )}
 
         <CommandGroup heading="Account">

@@ -13,6 +13,15 @@ export const MAX_QUESTION_CHARS = 1_000;
 const contentSchema = z.object({
   content: z.string({ required_error: "Missing content" }).trim().min(1, "Missing content"),
 });
+const catchUpSchema = z.object({
+  conversationId: z.string().regex(/^[a-f0-9]{24}$/i, "Invalid conversation"),
+  since: z.string().datetime({ offset: true }).optional(),
+});
+const threadDocSchema = z.object({
+  conversationId: z.string().regex(/^[a-f0-9]{24}$/i, "Invalid conversation"),
+  rootId: z.string().regex(/^[a-f0-9]{24}$/i, "Invalid thread"),
+});
+
 const questionSchema = z.object({
   question: z.string({ required_error: "Missing question" }).trim().min(1, "Missing question"),
 });
@@ -44,5 +53,15 @@ aiRouter.post("/improve-writing", limit("content", MAX_CONTENT_CHARS), validateB
 });
 
 aiRouter.post("/ask-docs", requireWorkspace, limit("question", MAX_QUESTION_CHARS), validateBody(questionSchema), async (req, res) => {
-  res.json(await aiService.askDocs(ctxOf(req).key, req.body.question));
+  res.json(await aiService.askDocs(ctxOf(req), req.body.question));
+});
+
+aiRouter.post("/catch-up", requireWorkspace, validateBody(catchUpSchema), async (req, res) => {
+  const { conversationId, since } = req.body as z.infer<typeof catchUpSchema>;
+  res.json(await aiService.catchUp(ctxOf(req), conversationId, since ? new Date(since) : undefined));
+});
+
+aiRouter.post("/thread-to-doc", requireWorkspace, validateBody(threadDocSchema), async (req, res) => {
+  const { conversationId, rootId } = req.body as z.infer<typeof threadDocSchema>;
+  res.status(201).json(await aiService.threadToDoc(ctxOf(req), conversationId, rootId));
 });

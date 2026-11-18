@@ -5,8 +5,10 @@ Team chat, shared docs and an AI knowledge base you can ask questions, in one wo
 ## What's in it today
 
 - **Chat**: public and private channels, DMs and group DMs, threads, @mentions, file and image sharing, edit/delete, unread counts, typing indicators, online presence and a notifications inbox.
-- **Docs**: write, tag, star and version team documents, with AI summaries, tags and editing.
-- **Knowledge**: upload PDFs and text files, index them, and ask questions answered only from your team's files (RAG on MongoDB Atlas Vector Search).
+- **Docs**: rich-text editor (headings, lists, checklists, links, code) with auto-save, version history and restore, folders, personal stars, and AI summaries, tags and rewriting.
+- **Knowledge**: ask a question and get an answer from your workspace with numbered, clickable sources. Docs, uploaded files (PDF, text, Markdown, CSV) and public channels are indexed automatically; private channels and DMs never are (RAG on MongoDB Atlas Vector Search).
+- **Search**: Ctrl/⌘K searches docs, files and the messages you can see.
+- **AI in chat**: "Catch up" summarises the last 24 hours of a conversation; "Turn into doc" writes a doc from a thread.
 - **Workspaces**: create workspaces, invite people by link or email, owner/admin/member roles, switch between workspaces.
 - **Sign-in**: email + password or Google; password reset by email; light and dark themes.
 
@@ -73,7 +75,9 @@ Create a vector search index named `rag_chunk_vector_index` on the `ragchunks` c
 }
 ```
 
-(`numDimensions` must match `EMBEDDING_MODEL`; `gemini-embedding-001` returns 3072.)
+(`numDimensions` must match `EMBEDDING_MODEL`; `gemini-embedding-001` returns 3072.) Docs and chat chunks use the same index; nothing to change if you already have it.
+
+Indexing runs in the worker (`npm run worker` / PM2), so Redis and the worker must be up for docs, files and channels to become searchable. Docs are re-indexed about 30 seconds after the last edit, channels about a minute after new messages. `QUEUE_DISABLED=true` turns the queue off (tests use it).
 
 ## Checks
 
@@ -92,6 +96,10 @@ Accounts created before workspaces existed shared an 8-digit team code. Each cod
 ```bash
 cd apps/api && npm run build && npm run migrate:workspaces
 ```
+
+### Upgrading docs
+
+Docs written in the old plain-text editor are converted to rich text the first time they're opened, old embedded versions move into the new history, and the old team-wide star becomes a personal star for the doc's author. Nothing to run.
 
 ### Upgrading chat history
 
@@ -113,6 +121,6 @@ See [`deploy/nginx.conf.example`](deploy/nginx.conf.example) and [`apps/api/ecos
 2. ✅ Foundations: TypeScript API in modules, tests, CI, React Query
 3. ✅ Workspaces: real workspaces, invite links, roles, Google sign-in, onboarding, light theme
 4. ✅ Chat v2: channels, threads, unread counts, real presence, notifications
-5. Docs v2 + Knowledge: rich-text editor, one searchable knowledge base, cited answers
+5. ✅ Docs v2 + Knowledge: rich-text editor, one searchable knowledge base, cited answers
 6. Business: billing, audit log, export
 7. Collaboration: live co-editing, comments, integrations

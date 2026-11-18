@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, DoorExit, Edit, Hash, Loader2, Lock, MessageSquare, Plus, Search, UserPlus, Users } from "@/components/icons";
+import { ArrowLeft, DoorExit, Edit, Hash, Loader2, Lock, MessageSquare, Plus, Search, Sparkles, UserPlus, Users } from "@/components/icons";
+import { useCatchUp } from "@/api/ai";
+import { Modal } from "@/components/chat/Dialogs";
 import {
   useConversationMembers,
   useConversations,
@@ -123,6 +125,8 @@ function Header({ c, onAddPeople }: { c: Conversation; onAddPeople: () => void }
   const [editingTopic, setEditingTopic] = useState(false);
   const [topic, setTopic] = useState(c.topic ?? "");
   const dmPartner = c.type === "dm" ? c.members[0] : undefined;
+  const catchUp = useCatchUp();
+  const [showCatchUp, setShowCatchUp] = useState(false);
 
   const saveTopic = () =>
     update.mutate(
@@ -175,6 +179,32 @@ function Header({ c, onAddPeople }: { c: Conversation; onAddPeople: () => void }
         )}
       </div>
 
+      <button
+        onClick={() => {
+          setShowCatchUp(true);
+          catchUp.mutate({ conversationId: c._id });
+        }}
+        className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-white"
+        title="Summarise the last 24 hours"
+      >
+        <Sparkles className="h-4 w-4" /> <span className="hidden sm:inline">Catch up</span>
+      </button>
+      {showCatchUp && (
+        <Modal title={`Catch up on ${c.type === "channel" ? `#${c.name}` : conversationTitle(c)}`} onClose={() => setShowCatchUp(false)}>
+          {catchUp.isPending ? (
+            <p className="flex items-center gap-2 text-sm text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Reading the last 24 hours…</p>
+          ) : catchUp.isError ? (
+            <p className="text-sm text-red-400">{errorMessage(catchUp.error, "Couldn't summarise right now.")}</p>
+          ) : catchUp.data?.summary ? (
+            <>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">{catchUp.data.summary}</p>
+              <p className="mt-3 text-xs text-zinc-500">From {catchUp.data.count} messages in the last 24 hours. AI summaries can miss things.</p>
+            </>
+          ) : (
+            <p className="text-sm text-zinc-400">Nothing new in the last 24 hours.</p>
+          )}
+        </Modal>
+      )}
       {c.type === "channel" && (
         <>
           <span className="hidden items-center gap-1 text-xs text-zinc-500 sm:flex">

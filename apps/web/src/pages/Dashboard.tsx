@@ -175,7 +175,7 @@ export default function Dashboard() {
           className="lg:grid-cols-3"
           onItemClick={(doc) => navigate(`/editor/${doc._id}`)}
           renderItem={(doc) => (
-            <div className="flex h-[200px] cursor-pointer flex-col p-5">
+            <div className="flex h-full min-h-[200px] cursor-pointer flex-col p-5">
               <div className="mb-3 flex items-start justify-between">
                 <div className="flex h-10 w-10 items-center justify-center rounded-md border border-white/[0.06] bg-zinc-800 text-zinc-400">
                   <FileText className="h-5 w-5" />
@@ -194,7 +194,7 @@ export default function Dashboard() {
                   {doc.title}
                 </h3>
                 <p className="line-clamp-2 text-sm leading-relaxed text-zinc-500">
-                  {doc.summary || "No summary provided."}
+                  {doc.summary || doc.content || "Empty document"}
                 </p>
               </div>
 

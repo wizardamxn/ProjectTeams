@@ -9,6 +9,7 @@ export default defineConfig({
       MONGO_URI: "mongodb://unused-in-tests",
       LOG_LEVEL: "silent",
       DNS_SERVERS: "",
+      QUEUE_DISABLED: "true",
     },
     include: ["test/**/*.test.ts"],
     // Integration tests share one in-memory MongoDB, so run files one at a time.

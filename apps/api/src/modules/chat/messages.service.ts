@@ -8,6 +8,7 @@ import { Message, type IAttachment, type IMessage, type MessageDoc } from "../..
 import { Notification, type NotificationType } from "../../models/notification.js";
 import { User } from "../../models/user.js";
 import { emitToUsers } from "../../realtime/emitter.js";
+import { enqueueChatIndex } from "../../queues/ragQueue.js";
 import type { WorkspaceContext } from "../workspaces/workspaces.service.js";
 import { conversationsService } from "./conversations.service.js";
 
@@ -74,6 +75,15 @@ export const presentMessages = async (messages: (IMessage | MessageDoc)[]) => {
 };
 
 export type PresentedMessage = Awaited<ReturnType<typeof presentMessages>>[number];
+
+/** Public channels feed the knowledge base. Private channels and DMs never do. */
+const isIndexed = (c: ConversationDoc) => c.type === "channel" && !c.isPrivate;
+const queueIndex = (c: ConversationDoc, full = false) => {
+  if (!isIndexed(c)) return;
+  Promise.resolve()
+    .then(() => enqueueChatIndex(c._id.toString(), full))
+    .catch((err) => logger.warn({ err, conversationId: c._id.toString() }, "Could not queue channel indexing"));
+};
 
 const getOwnMessage = async (ctx: WorkspaceContext, messageId: string) => {
   if (!Types.ObjectId.isValid(messageId)) throw notFound("Message not found");
@@ -206,6 +216,7 @@ export const messagesService = {
 
     const [presented] = await presentMessages([message]);
     emitToUsers(memberIds, "message:new", { conversationId: conversation._id.toString(), message: presented });
+    queueIndex(conversation);
 
     if (root) {
       const updatedRoot = await Message.findById(root._id);
@@ -234,6 +245,7 @@ export const messagesService = {
     message.text = trimmed;
     message.editedAt = new Date();
     await message.save();
+    queueIndex(conversation, true);
     return broadcastUpdate(conversation, message);
   },
 
@@ -251,6 +263,7 @@ export const messagesService = {
     message.attachments = [];
     await message.save();
     await Notification.deleteMany({ messageId: message._id });
+    queueIndex(conversation, true); // deleted text must leave the knowledge base too
     await Promise.all(paths.map((p) => storage.remove(p).catch((err) => logger.error({ err, p }, "Could not remove attachment"))));
     await broadcastUpdate(conversation, message);
   },

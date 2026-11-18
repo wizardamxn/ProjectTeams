@@ -60,23 +60,57 @@ export interface InvitePreview {
 export interface Doc {
   _id: string;
   title: string;
+  /** Editor JSON; only present when a single doc is fetched. */
+  contentJson?: RichDoc;
+  /** Plain text (an excerpt in lists). */
   content: string;
-  summary?: string;
+  summary: string;
   tags: string[];
+  folderId: string | null;
   createdBy: string;
+  lastEditedBy: string | null;
   teamId: string;
   author: { name: string; avatar?: string };
+  /** Starred by you (stars are personal). */
   starred: boolean;
-  versions: { _id?: string; content: string; updatedAt: string }[];
   createdAt: string;
   updatedAt: string;
 }
 
+/** Tiptap / ProseMirror document JSON. */
+export interface RichDoc {
+  type: "doc";
+  content?: unknown[];
+  [key: string]: unknown;
+}
+
+export interface Folder {
+  _id: string;
+  name: string;
+  docCount: number;
+}
+
+export interface DocVersionSummary {
+  _id: string;
+  title: string;
+  savedAt: string;
+  editedBy: { _id: string; fullName: string } | null;
+  preview: string;
+}
+
+export interface DocVersion {
+  _id: string;
+  title: string;
+  contentJson: RichDoc;
+  savedAt: string;
+}
+
 export interface DocInput {
   title: string;
-  content: string;
+  contentJson?: RichDoc;
   summary?: string;
   tags?: string[];
+  folderId?: string | null;
   starred?: boolean;
 }
 
@@ -188,7 +222,39 @@ export interface RagChunk {
   text: string;
 }
 
+export interface AskSource {
+  n: number;
+  type: "doc" | "file" | "chat";
+  title: string;
+  snippet: string;
+  score: number;
+  docId: string | null;
+  fileId: string | null;
+  conversationId: string | null;
+  messageId: string | null;
+}
+
 export interface AskAnswer {
   answer: string;
-  sources: { documentId: string; score: number }[];
+  sources: AskSource[];
+}
+
+export interface KnowledgeStats {
+  docs: number;
+  files: number;
+  channels: number;
+}
+
+export interface SearchResults {
+  docs: { _id: string; title: string; snippet: string; updatedAt: string }[];
+  files: { _id: string; fileName: string; ragStatus: RagStatus }[];
+  messages: {
+    _id: string;
+    conversationId: string;
+    threadRootId: string | null;
+    where: string;
+    sender: string;
+    snippet: string;
+    createdAt: string;
+  }[];
 }
