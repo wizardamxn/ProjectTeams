@@ -1,3 +1,5 @@
+import { Tip } from "@/components/ui/tooltip";
+import { confirmDialog } from "@/components/ui/confirm";
 import { memo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Edit, FileText, MessageSquare, Trash2 } from "@/components/icons";
@@ -110,8 +112,8 @@ function MessageItemInner({ message, compact, myId, isAdmin, people, onOpenThrea
     );
   };
 
-  const del = () => {
-    if (!confirm("Delete this message? This can't be undone.")) return;
+  const del = async () => {
+    if (!(await confirmDialog({ title: "Delete this message?", body: "This can't be undone.", action: "Delete", danger: true }))) return;
     remove.mutate(message._id, { onError: (err) => toast.error(errorMessage(err, "Couldn't delete the message")) });
   };
 
@@ -189,27 +191,26 @@ function MessageItemInner({ message, compact, myId, isAdmin, people, onOpenThrea
       {!message.deleted && !editing && (
         <div className="absolute -top-3 right-3 hidden items-center gap-0.5 rounded-lg border border-white/10 bg-zinc-900 p-0.5 shadow-lg group-hover:flex group-focus-within:flex">
           {onOpenThread && (
-            <button onClick={() => onOpenThread(message._id)} className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white" title="Reply in thread" aria-label="Reply in thread">
+            <Tip label="Reply in thread"><button onClick={() => onOpenThread(message._id)} className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white" aria-label="Reply in thread">
               <MessageSquare className="h-3.5 w-3.5" />
-            </button>
+            </button></Tip>
           )}
           {mine && (
-            <button
+            <Tip label="Edit"><button
               onClick={() => {
                 setDraft(message.text);
                 setEditing(true);
               }}
               className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white"
-              title="Edit"
               aria-label="Edit message"
             >
               <Edit className="h-3.5 w-3.5" />
-            </button>
+            </button></Tip>
           )}
           {(mine || isAdmin) && (
-            <button onClick={del} className="rounded-md p-1.5 text-zinc-400 hover:bg-red-500/10 hover:text-red-400" title="Delete" aria-label="Delete message">
+            <Tip label="Delete"><button onClick={del} className="rounded-md p-1.5 text-zinc-400 hover:bg-red-500/10 hover:text-red-400" aria-label="Delete message">
               <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            </button></Tip>
           )}
         </div>
       )}

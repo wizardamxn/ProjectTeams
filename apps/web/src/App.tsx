@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { DialogHost } from "@/components/ui/confirm";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
 import { useEffect } from "react";
@@ -106,8 +107,9 @@ const App = () => {
   }
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
+      <TooltipProvider delayDuration={300}>
         <Toaster />
+        <DialogHost />
         <RouterProvider router={router} />
       </TooltipProvider>
     </QueryClientProvider>

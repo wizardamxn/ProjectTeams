@@ -1,3 +1,4 @@
+import { confirmDialog } from "@/components/ui/confirm";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -41,9 +42,9 @@ export default function Documents() {
     });
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("Delete this document?")) return;
+    if (!(await confirmDialog({ title: "Delete this document?", action: "Delete", danger: true }))) return;
     deleteDoc.mutate(id, {
       onError: (err) => toast.error(errorMessage(err, "Failed to delete document")),
     });

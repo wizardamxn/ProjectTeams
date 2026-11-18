@@ -1,3 +1,5 @@
+import { Tip } from "@/components/ui/tooltip";
+import { confirmDialog } from "@/components/ui/confirm";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -82,27 +84,27 @@ function Sidebar({ conversations, activeId, open }: { conversations: Conversatio
             className="w-full rounded-lg border border-white/[0.06] bg-zinc-900/60 py-1.5 pl-8 pr-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-emerald-500/40"
           />
         </div>
-        <button onClick={() => open("message")} className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white" title="New message" aria-label="New message">
+        <Tip label="New message"><button onClick={() => open("message")} className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white" aria-label="New message">
           <Edit className="h-4 w-4" />
-        </button>
+        </button></Tip>
       </div>
 
       <nav className="custom-scrollbar flex-1 space-y-5 overflow-y-auto p-2">
         <section>
           <div className="mb-1 flex items-center justify-between px-2.5">
             <h3 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Channels</h3>
-            <button onClick={() => open("browse")} className="rounded p-0.5 text-zinc-500 hover:text-white" title="Browse or create channels" aria-label="Browse or create channels">
+            <Tip label="Browse or create channels"><button onClick={() => open("browse")} className="rounded p-0.5 text-zinc-500 hover:text-white" aria-label="Browse or create channels">
               <Plus className="h-3.5 w-3.5" />
-            </button>
+            </button></Tip>
           </div>
           {channels.map((c) => <ConversationRow key={c._id} c={c} active={c._id === activeId} />)}
         </section>
         <section>
           <div className="mb-1 flex items-center justify-between px-2.5">
             <h3 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Direct messages</h3>
-            <button onClick={() => open("message")} className="rounded p-0.5 text-zinc-500 hover:text-white" title="New message" aria-label="New direct message">
+            <Tip label="New message"><button onClick={() => open("message")} className="rounded p-0.5 text-zinc-500 hover:text-white" aria-label="New direct message">
               <Plus className="h-3.5 w-3.5" />
-            </button>
+            </button></Tip>
           </div>
           {direct.length === 0 && !q && (
             <button onClick={() => open("message")} className="w-full rounded-lg px-2.5 py-1.5 text-left text-sm text-zinc-500 hover:bg-white/[0.04]">
@@ -179,16 +181,15 @@ function Header({ c, onAddPeople }: { c: Conversation; onAddPeople: () => void }
         )}
       </div>
 
-      <button
+      <Tip label="Summarise the last 24 hours"><button
         onClick={() => {
           setShowCatchUp(true);
           catchUp.mutate({ conversationId: c._id });
         }}
         className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-white"
-        title="Summarise the last 24 hours"
       >
         <Sparkles className="h-4 w-4" /> <span className="hidden sm:inline">Catch up</span>
-      </button>
+      </button></Tip>
       {showCatchUp && (
         <Modal title={`Catch up on ${c.type === "channel" ? `#${c.name}` : conversationTitle(c)}`} onClose={() => setShowCatchUp(false)}>
           {catchUp.isPending ? (
@@ -210,24 +211,29 @@ function Header({ c, onAddPeople }: { c: Conversation; onAddPeople: () => void }
           <span className="hidden items-center gap-1 text-xs text-zinc-500 sm:flex">
             <Users className="h-3.5 w-3.5" /> {c.memberCount}
           </span>
-          <button onClick={onAddPeople} className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white" title="Add people" aria-label="Add people">
+          <Tip label="Add people"><button onClick={onAddPeople} className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white" aria-label="Add people">
             <UserPlus className="h-4 w-4" />
-          </button>
+          </button></Tip>
           {!c.isDefault && (
-            <button
-              onClick={() => {
-                if (!confirm(`Leave #${c.name}?${c.isPrivate ? " You'll need to be added again to come back." : ""}`)) return;
+            <Tip label="Leave channel"><button
+              onClick={async () => {
+                const ok = await confirmDialog({
+                  title: `Leave #${c.name}?`,
+                  body: c.isPrivate ? "You'll need to be added again to come back." : undefined,
+                  action: "Leave",
+                  danger: true,
+                });
+                if (!ok) return;
                 leave.mutate(c._id, {
                   onSuccess: () => navigate("/chat"),
                   onError: (err) => toast.error(errorMessage(err, "Couldn't leave")),
                 });
               }}
               className="rounded-md p-1.5 text-zinc-400 hover:bg-red-500/10 hover:text-red-400"
-              title="Leave channel"
               aria-label="Leave channel"
             >
               <DoorExit className="h-4 w-4" />
-            </button>
+            </button></Tip>
           )}
         </>
       )}

@@ -1,3 +1,4 @@
+import { Tip } from "@/components/ui/tooltip";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Plus, Send, X, FileText } from "@/components/icons";
@@ -190,16 +191,15 @@ export function Composer({ conversationId, threadRootId, placeholder, people, au
         )}
 
         <div className="flex items-end gap-2 p-2">
-          <button
+          <Tip label="Attach files"><button
             type="button"
             onClick={() => fileInput.current?.click()}
             disabled={files.length >= MAX_FILES}
             className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white disabled:opacity-40"
             aria-label="Attach files"
-            title="Attach files"
           >
             <Plus className="h-5 w-5" />
-          </button>
+          </button></Tip>
           <input
             ref={fileInput}
             type="file"

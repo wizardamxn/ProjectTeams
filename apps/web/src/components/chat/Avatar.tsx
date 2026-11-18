@@ -1,3 +1,4 @@
+import { Tip } from "@/components/ui/tooltip";
 import { usePresence } from "@/api/chat";
 import type { Person } from "@/api/types";
 
@@ -26,12 +27,11 @@ export function Avatar({
         </span>
       )}
       {showPresence && (
-        <span
-          title={isOnline ? "Online" : "Offline"}
+        <Tip label={isOnline ? "Online" : "Offline"}><span
           className={`absolute -bottom-0.5 -right-0.5 ${DOT[size]} rounded-full ring-2 ring-zinc-950 ${
             isOnline ? "bg-emerald-500" : "bg-zinc-600"
           }`}
-        />
+        /></Tip>
       )}
     </span>
   );

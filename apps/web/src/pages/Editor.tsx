@@ -1,3 +1,6 @@
+import { Tip } from "@/components/ui/tooltip";
+import { confirmDialog } from "@/components/ui/confirm";
+import { Select } from "@/components/ui/select";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -260,8 +263,8 @@ function DocEditor({ docId }: { docId: string }) {
     queue({ tags: next });
   };
 
-  const onDelete = () => {
-    if (!confirm(`Delete "${title}"? This can't be undone.`)) return;
+  const onDelete = async () => {
+    if (!(await confirmDialog({ title: `Delete "${title}"?`, body: "This can't be undone.", action: "Delete", danger: true }))) return;
     pending.current = {};
     del.mutate(docId, {
       onSuccess: () => navigate("/documents", { replace: true }),
@@ -287,28 +290,23 @@ function DocEditor({ docId }: { docId: string }) {
             <button onClick={() => navigate("/documents")} className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white" aria-label="Back to documents">
               <ArrowLeft className="h-4 w-4" />
             </button>
-            <select
+            <Select
               value={doc!.folderId ?? ""}
-              onChange={(e) => queue({ folderId: e.target.value || null })}
+              onChange={(v) => queue({ folderId: v || null })}
+              options={[{ value: "", label: "No folder" }, ...folders.map((f) => ({ value: f._id, label: f.name }))]}
               aria-label="Folder"
-              className="max-w-[10rem] truncate rounded-md border border-transparent bg-transparent px-1.5 py-1 text-xs text-zinc-400 hover:border-white/10 focus:border-white/10 focus:outline-none"
-            >
-              <option value="">No folder</option>
-              {folders.map((f) => (
-                <option key={f._id} value={f._id}>{f.name}</option>
-              ))}
-            </select>
+              className="h-7 max-w-[10rem] border-transparent bg-transparent px-1.5 text-xs text-zinc-400 hover:border-white/10"
+            />
 
             <span className={`ml-auto flex min-w-0 items-center gap-1.5 truncate text-xs ${statusWarn ? "text-amber-400" : "text-zinc-500"}`} aria-live="polite">
               {!loaded || saveState === "saving" ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : statusWarn ? <AlertCircle className="h-3.5 w-3.5 shrink-0" /> : saveState === "saved" ? <Check className="h-3.5 w-3.5 shrink-0" /> : null}
               <span className="truncate">{statusText}</span>
             </span>
             <Presence people={people} />
-            <button
+            <Tip label="Comments"><button
               onClick={() => setPanel((p) => (p === "comments" ? null : "comments"))}
               className={`relative rounded-md p-1.5 hover:bg-zinc-800 ${panel === "comments" ? "text-emerald-400" : "text-zinc-400 hover:text-white"}`}
               aria-label={`Comments${openThreads ? ` (${openThreads} open)` : ""}`}
-              title="Comments"
             >
               <MessageSquare className="h-4 w-4" />
               {openThreads > 0 && (
@@ -316,46 +314,42 @@ function DocEditor({ docId }: { docId: string }) {
                   {openThreads}
                 </span>
               )}
-            </button>
-            <button
+            </button></Tip>
+            <Tip label={doc!.starred ? "Starred (only you see your stars)" : "Star"}><button
               onClick={() => star.mutate(docId)}
               className={`rounded-md p-1.5 hover:bg-zinc-800 ${doc!.starred ? "text-amber-400" : "text-zinc-400 hover:text-white"}`}
               aria-label={doc!.starred ? "Unstar" : "Star"}
               aria-pressed={doc!.starred}
-              title={doc!.starred ? "Starred (only you see your stars)" : "Star"}
             >
               <Star className={`h-4 w-4 ${doc!.starred ? "fill-current" : ""}`} />
-            </button>
-            <button
+            </button></Tip>
+            <Tip label="Version history"><button
               onClick={() => setPanel((p) => (p === "history" ? null : "history"))}
               className={`rounded-md p-1.5 hover:bg-zinc-800 ${panel === "history" ? "text-emerald-400" : "text-zinc-400 hover:text-white"}`}
               aria-label="Version history"
-              title="Version history"
             >
               <Clock className="h-4 w-4" />
-            </button>
-            <button
+            </button></Tip>
+            <Tip label="Details and AI tools"><button
               onClick={() => setPanel((p) => (p === "details" ? null : "details"))}
               className={`rounded-md p-1.5 hover:bg-zinc-800 ${panel === "details" ? "text-emerald-400" : "text-zinc-400 hover:text-white"}`}
               aria-label="Details and AI tools"
-              title="Details and AI tools"
             >
               <Sparkles className="h-4 w-4" />
-            </button>
+            </button></Tip>
           </div>
           {editor && (
             <div className="flex items-center gap-1 border-t border-white/[0.04] px-3 py-1 md:px-6">
               <Toolbar editor={editor} />
-              <button
+              <Tip label="Comment on the selected text"><button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={startComment}
                 disabled={!loaded}
                 className="ml-auto flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-white disabled:opacity-30"
-                title="Comment on the selected text"
               >
                 <MessageSquare className="h-3.5 w-3.5" /> Comment
-              </button>
+              </button></Tip>
             </div>
           )}
         </div>
@@ -510,14 +504,12 @@ function Presence({ people }: { people: Collaborator[] }) {
   return (
     <div className="flex -space-x-1.5" aria-label={`Also here: ${people.map((p) => p.name).join(", ")}`}>
       {shown.map((p) => (
-        <span
-          key={p.clientId}
-          title={`${p.name} is here`}
+        <Tip key={p.clientId} label={`${p.name} is here`}><span
           className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold text-white ring-2 ring-zinc-950"
           style={{ backgroundColor: p.color }}
         >
           {p.name.charAt(0).toUpperCase()}
-        </span>
+        </span></Tip>
       ))}
       {people.length > shown.length && (
         <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-[10px] text-zinc-200 ring-2 ring-zinc-950">

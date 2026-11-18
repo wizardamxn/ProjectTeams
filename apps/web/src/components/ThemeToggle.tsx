@@ -1,3 +1,4 @@
+import { Tip } from "@/components/ui/tooltip";
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "@/components/icons";
 
@@ -6,15 +7,14 @@ export function ThemeToggle({ className = "", label }: { className?: string; lab
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
   return (
-    <button
+    <Tip label={isDark ? "Light theme" : "Dark theme"}><button
       onClick={() => setTheme(isDark ? "light" : "dark")}
       aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
-      title={isDark ? "Light theme" : "Dark theme"}
       className={className}
     >
       {isDark ? <Sun className="h-5 w-5 shrink-0" /> : <Moon className="h-5 w-5 shrink-0" />}
       {label}
-    </button>
+    </button></Tip>
   );
 }
 

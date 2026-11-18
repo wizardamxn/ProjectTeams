@@ -1,4 +1,6 @@
+import { Tip } from "@/components/ui/tooltip";
 import { useState, type ReactNode } from "react";
+import { Select } from "@/components/ui/select";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Activity, AlertTriangle, Download, Loader2, Settings as SettingsIcon, Trash2, X, Zap } from "@/components/icons";
@@ -267,8 +269,7 @@ const describeEvent = (e: AuditEvent): string => {
 const formatTime = (iso: string) =>
   new Date(iso).toLocaleString([], { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 
-const selectCls =
-  "rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-emerald-500/50";
+const selectCls = "min-w-40 text-zinc-200";
 
 function AuditLog() {
   const [filter, setFilter] = useState<AuditFilter>({});
@@ -291,32 +292,20 @@ function AuditLog() {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <select
+        <Select
           aria-label="Filter by action"
           value={filter.action ?? ""}
-          onChange={(e) => setFilter((f) => ({ ...f, action: (e.target.value || undefined) as AuditAction | undefined }))}
+          onChange={(v) => setFilter((f) => ({ ...f, action: (v || undefined) as AuditAction | undefined }))}
+          options={[{ value: "", label: "All actions" }, ...AUDIT_ACTIONS.map((a) => ({ value: a, label: ACTION_LABELS[a] }))]}
           className={selectCls}
-        >
-          <option value="">All actions</option>
-          {AUDIT_ACTIONS.map((a) => (
-            <option key={a} value={a}>
-              {ACTION_LABELS[a]}
-            </option>
-          ))}
-        </select>
-        <select
+        />
+        <Select
           aria-label="Filter by person"
           value={filter.actorId ?? ""}
-          onChange={(e) => setFilter((f) => ({ ...f, actorId: e.target.value || undefined }))}
+          onChange={(v) => setFilter((f) => ({ ...f, actorId: v || undefined }))}
+          options={[{ value: "", label: "Everyone" }, ...members.map((m) => ({ value: m._id, label: m.fullName }))]}
           className={selectCls}
-        >
-          <option value="">Everyone</option>
-          {members.map((m) => (
-            <option key={m._id} value={m._id}>
-              {m.fullName}
-            </option>
-          ))}
-        </select>
+        />
         <button
           onClick={onCsv}
           disabled={downloading}
@@ -341,9 +330,9 @@ function AuditLog() {
               <p className="min-w-0 flex-1 text-sm text-zinc-300">
                 <span className="font-medium text-white">{e.actor.name}</span> {describeEvent(e)}
               </p>
-              <span className="shrink-0 text-xs text-zinc-500" title={e.ip ? `From ${e.ip}` : undefined}>
+              <Tip label={e.ip ? `From ${e.ip}` : undefined}><span className="shrink-0 text-xs text-zinc-500">
                 {formatTime(e.createdAt)}
-              </span>
+              </span></Tip>
             </li>
           ))}
         </ul>

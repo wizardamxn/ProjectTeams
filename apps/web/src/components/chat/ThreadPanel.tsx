@@ -1,3 +1,4 @@
+import { Tip } from "@/components/ui/tooltip";
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -51,14 +52,13 @@ export function ThreadPanel({ conversationId, rootId, title, myId, isAdmin, peop
         </div>
         <div className="flex items-center gap-1">
           {data && !data.root.deleted && (
-            <button
+            <Tip label="Write a doc from this thread with AI"><button
               onClick={makeDoc}
               disabled={toDoc.isPending}
               className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-white disabled:opacity-60"
-              title="Write a doc from this thread with AI"
             >
               {toDoc.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />} Turn into doc
-            </button>
+            </button></Tip>
           )}
           <button onClick={onClose} className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white" aria-label="Close thread">
             <X className="h-4 w-4" />

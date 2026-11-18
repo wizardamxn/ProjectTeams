@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Check, Hash, Loader2, Lock, Search, X } from "@/components/icons";
@@ -75,7 +76,7 @@ export function NewChannelDialog({ onClose }: { onClose: () => void }) {
           <input id="ch-topic" value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={250} placeholder="What's this channel about?" className={inputClass} />
         </div>
         <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/[0.06] p-3">
-          <input type="checkbox" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} className="mt-0.5 accent-emerald-500" />
+          <Checkbox checked={isPrivate} onChange={setIsPrivate} className="mt-0.5" />
           <span>
             <span className="flex items-center gap-1.5 text-sm font-medium text-zinc-200"><Lock className="h-3.5 w-3.5" /> Private</span>
             <span className="text-xs text-zinc-500">Only people you add can see or join it.</span>

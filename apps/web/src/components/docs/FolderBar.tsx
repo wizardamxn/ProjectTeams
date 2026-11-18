@@ -1,3 +1,4 @@
+import { confirmDialog, promptDialog } from "@/components/ui/confirm";
 import { useState } from "react";
 import { Edit, FileText, Plus, Star, Trash2, X } from "@/components/icons";
 import type { Folder } from "@/api/types";
@@ -88,8 +89,8 @@ export function FolderBar({
       {current && (
         <div className="mt-3 flex items-center gap-3 text-xs text-zinc-500">
           <button
-            onClick={() => {
-              const next = window.prompt("Rename folder", current.name);
+            onClick={async () => {
+              const next = await promptDialog({ title: "Rename folder", defaultValue: current.name, action: "Rename" });
               if (next?.trim() && next.trim() !== current.name) onRename(current._id, next.trim());
             }}
             className="flex items-center gap-1 hover:text-zinc-200"
@@ -97,7 +98,14 @@ export function FolderBar({
             <Edit className="h-3.5 w-3.5" /> Rename
           </button>
           <button
-            onClick={() => confirm(`Delete the folder "${current.name}"? Its documents stay, without a folder.`) && onDelete(current._id)}
+            onClick={async () =>
+              (await confirmDialog({
+                title: `Delete the folder "${current.name}"?`,
+                body: "Its documents stay, without a folder.",
+                action: "Delete folder",
+                danger: true,
+              })) && onDelete(current._id)
+            }
             className="flex items-center gap-1 hover:text-red-400"
           >
             <Trash2 className="h-3.5 w-3.5" /> Delete folder

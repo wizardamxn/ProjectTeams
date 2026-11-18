@@ -1,3 +1,4 @@
+import { Tip } from "@/components/ui/tooltip";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -66,11 +67,10 @@ export default function WorkspaceSwitcher({ compact = false }: { compact?: boole
 
   return (
     <div ref={ref} className="relative">
-      <button
+      <Tip label={workspace.name}><button
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        title={workspace.name}
         className="flex w-full items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-white/5"
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white">
@@ -82,7 +82,7 @@ export default function WorkspaceSwitcher({ compact = false }: { compact?: boole
             <ChevronDown className="h-4 w-4 shrink-0 text-zinc-500" />
           </>
         )}
-      </button>
+      </button></Tip>
 
       {open && (
         <div

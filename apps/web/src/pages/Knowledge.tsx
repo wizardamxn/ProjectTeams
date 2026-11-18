@@ -1,3 +1,4 @@
+import { Tip } from "@/components/ui/tooltip";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -51,7 +52,7 @@ function AnswerText({ text, sources }: { text: string; sources: AskSource[] }) {
         const href = sourceHref(source);
         const chipCls = "mx-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded bg-emerald-500/15 px-1 align-text-top text-[10px] font-semibold text-emerald-400 hover:bg-emerald-500/25";
         return href ? (
-          <Link key={i} to={href} className={chipCls} title={source.title}>{n}</Link>
+          <Tip key={i} label={source.title}><Link to={href} className={chipCls}>{n}</Link></Tip>
         ) : (
           <span key={i} className={chipCls}>{n}</span>
         );

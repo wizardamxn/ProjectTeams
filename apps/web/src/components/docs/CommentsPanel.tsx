@@ -1,3 +1,4 @@
+import { confirmDialog } from "@/components/ui/confirm";
 import { useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import { toast } from "sonner";
@@ -97,8 +98,8 @@ function CommentBody({ docId, c, canDelete, onDeleted }: { docId: string; c: Doc
           )}
           {(mine || canDelete) && (
             <button
-              onClick={() =>
-                confirm("Delete this comment?") &&
+              onClick={async () =>
+                (await confirmDialog({ title: "Delete this comment?", action: "Delete", danger: true })) &&
                 del.mutate(c._id, {
                   onSuccess: (r) => r.threadDeleted && onDeleted?.(),
                   onError: (err) => toast.error(errorMessage(err, "Couldn't delete")),

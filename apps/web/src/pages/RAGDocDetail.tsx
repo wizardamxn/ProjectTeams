@@ -1,3 +1,4 @@
+import { confirmDialog } from "@/components/ui/confirm";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -43,8 +44,9 @@ export default function RAGDocDetail() {
   const [actionError, setActionError] = useState<string | null>(null);
   const error = actionError ?? (loadError ? errorMessage(loadError, "Failed to load document") : null);
 
-  const handleDelete = () => {
-    if (!id || !confirm("Delete this document? This cannot be undone.")) return;
+  const handleDelete = async () => {
+    if (!id) return;
+    if (!(await confirmDialog({ title: "Delete this document?", body: "This can't be undone.", action: "Delete", danger: true }))) return;
     deleteDoc.mutate(id, {
       onSuccess: () => navigate("/knowledge"),
       onError: (err) => setActionError(errorMessage(err, "Failed to delete document")),

@@ -1,3 +1,5 @@
+import { Tip } from "@/components/ui/tooltip";
+import { promptDialog } from "@/components/ui/confirm";
 import { type ReactNode } from "react";
 import { EditorContent, useEditor, useEditorState, type Editor, type JSONContent } from "@tiptap/react";
 import type { RichDoc } from "@/api/types";
@@ -7,20 +9,19 @@ import { docExtensions } from "./docEditor";
 
 function Btn({ on, label, onClick, children, disabled }: { on?: boolean; label: string; onClick: () => void; children: ReactNode; disabled?: boolean }) {
   return (
-    <button
+    <Tip label={label}><button
       type="button"
       onMouseDown={(e) => e.preventDefault()} // keep the selection
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
       aria-pressed={on}
-      title={label}
       className={`flex h-8 min-w-8 items-center justify-center rounded-md px-1.5 text-sm transition-colors disabled:opacity-30 ${
         on ? "bg-emerald-500/15 text-emerald-400" : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
       }`}
     >
       {children}
-    </button>
+    </button></Tip>
   );
 }
 
@@ -50,9 +51,15 @@ export function Toolbar({ editor }: { editor: Editor }) {
   });
   const c = () => editor.chain().focus();
 
-  const setLink = () => {
+  const setLink = async () => {
     const prev = editor.getAttributes("link").href as string | undefined;
-    const url = window.prompt("Link to", prev ?? "https://");
+    const url = await promptDialog({
+      title: "Link to",
+      defaultValue: prev ?? "https://",
+      placeholder: "https://",
+      body: "Leave empty to remove the link.",
+      action: "Save link",
+    });
     if (url === null) return;
     if (url.trim() === "" || url === "https://") return c().extendMarkRange("link").unsetLink().run();
     if (!/^(https?:|mailto:)/i.test(url.trim())) return; // no javascript: links

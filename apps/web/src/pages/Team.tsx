@@ -1,3 +1,6 @@
+import { Tip } from "@/components/ui/tooltip";
+import { confirmDialog } from "@/components/ui/confirm";
+import { Select } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -33,6 +36,8 @@ import type { Invite, Member, Role } from "@/api/types";
 import { errorMessage } from "@/lib/api";
 import { useAppSelector } from "@/store/hooks";
 import { isAtLeast } from "@/store/slices/User";
+
+const selectClass = "h-8 px-2 text-xs text-zinc-200";
 
 const ROLE_STYLES: Record<Role, string> = {
   owner: "border-amber-500/25 bg-amber-500/10 text-amber-300",
@@ -92,8 +97,12 @@ export default function Team() {
   const canRemove = (m: Member) =>
     m._id !== me?._id && (isOwner || (myRole === "admin" && m.role === "member"));
 
-  const onRoleChange = (m: Member, role: Role) => {
-    if (role === "owner" && !confirm(`Make ${m.fullName} the owner? You'll become an admin.`)) return;
+  const onRoleChange = async (m: Member, role: Role) => {
+    if (
+      role === "owner" &&
+      !(await confirmDialog({ title: `Make ${m.fullName} the owner?`, body: "You'll become an admin.", action: "Make owner", danger: true }))
+    )
+      return;
     changeRole.mutate(
       { userId: m._id, role },
       {
@@ -103,8 +112,14 @@ export default function Team() {
     );
   };
 
-  const onRemove = (m: Member) => {
-    if (!confirm(`Remove ${m.fullName} from ${workspace?.name}? They'll lose access right away.`)) return;
+  const onRemove = async (m: Member) => {
+    const ok = await confirmDialog({
+      title: `Remove ${m.fullName} from ${workspace?.name}?`,
+      body: "They'll lose access right away.",
+      action: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     removeMember.mutate(m._id, {
       onSuccess: () => toast.success(`${m.fullName} was removed`),
       onError: (err) => toast.error(errorMessage(err, "Couldn't remove this member")),
@@ -123,8 +138,14 @@ export default function Team() {
     });
   };
 
-  const onLeave = () => {
-    if (!confirm(`Leave ${workspace?.name}? You'll need a new invite to come back.`)) return;
+  const onLeave = async () => {
+    const ok = await confirmDialog({
+      title: `Leave ${workspace?.name}?`,
+      body: "You'll need a new invite to come back.",
+      action: "Leave",
+      danger: true,
+    });
+    if (!ok) return;
     leave.mutate(undefined, {
       onSuccess: () => navigate("/dashboard", { replace: true }),
       onError: (err) => toast.error(errorMessage(err, "Couldn't leave the workspace")),
@@ -217,30 +238,30 @@ export default function Team() {
                 </div>
 
                 {isOwner && m._id !== me?._id ? (
-                  <select
+                  <Select<Role>
                     value={m.role}
-                    onChange={(e) => onRoleChange(m, e.target.value as Role)}
+                    onChange={(role) => onRoleChange(m, role)}
+                    options={[
+                      { value: "member", label: "Member" },
+                      { value: "admin", label: "Admin" },
+                      { value: "owner", label: "Make owner…" },
+                    ]}
                     disabled={changeRole.isPending}
                     aria-label={`Role for ${m.fullName}`}
-                    className="rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-xs text-zinc-200 outline-none focus:border-emerald-500/50"
-                  >
-                    <option value="member">Member</option>
-                    <option value="admin">Admin</option>
-                    <option value="owner">Make owner…</option>
-                  </select>
+                    className={selectClass}
+                  />
                 ) : (
                   <RoleBadge role={m.role} />
                 )}
 
                 {canRemove(m) ? (
-                  <button
+                  <Tip label="Remove from workspace"><button
                     onClick={() => onRemove(m)}
                     className="rounded-md p-1.5 text-zinc-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
                     aria-label={`Remove ${m.fullName}`}
-                    title="Remove from workspace"
                   >
                     <UserRemove className="h-4 w-4" />
-                  </button>
+                  </button></Tip>
                 ) : (
                   <span className="w-7" />
                 )}
@@ -300,9 +321,6 @@ function InviteDialog({ isOwner, onClose }: { isOwner: boolean; onClose: () => v
     );
   };
 
-  const selectClass =
-    "rounded-md border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-emerald-500/50";
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
       <motion.div
@@ -323,16 +341,25 @@ function InviteDialog({ isOwner, onClose }: { isOwner: boolean; onClose: () => v
 
         <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
           Join as
-          <select value={role} onChange={(e) => setRole(e.target.value as "member" | "admin")} className={selectClass} aria-label="Role">
-            <option value="member">Member</option>
-            {isOwner && <option value="admin">Admin</option>}
-          </select>
+          <Select<"member" | "admin">
+            value={role}
+            onChange={setRole}
+            options={[{ value: "member", label: "Member" }, ...(isOwner ? [{ value: "admin" as const, label: "Admin" }] : [])]}
+            className={selectClass}
+            aria-label="Role"
+          />
           · link works for
-          <select value={days} onChange={(e) => setDays(Number(e.target.value))} className={selectClass} aria-label="Expiry">
-            <option value={1}>1 day</option>
-            <option value={7}>7 days</option>
-            <option value={30}>30 days</option>
-          </select>
+          <Select
+            value={String(days)}
+            onChange={(v) => setDays(Number(v))}
+            options={[
+              { value: "1", label: "1 day" },
+              { value: "7", label: "7 days" },
+              { value: "30", label: "30 days" },
+            ]}
+            className={selectClass}
+            aria-label="Expiry"
+          />
         </div>
 
         {/* Link */}
@@ -404,14 +431,13 @@ function InviteDialog({ isOwner, onClose }: { isOwner: boolean; onClose: () => v
                       <Copy className="h-3.5 w-3.5" />
                     </button>
                   )}
-                  <button
+                  <Tip label="Revoke"><button
                     onClick={() => revoke.mutate(inv._id, { onSuccess: () => toast.success("Invite revoked") })}
                     className="rounded p-1 text-zinc-500 hover:text-red-400"
                     aria-label="Revoke invite"
-                    title="Revoke"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  </button></Tip>
                 </li>
               ))}
             </ul>

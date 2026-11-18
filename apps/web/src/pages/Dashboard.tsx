@@ -1,3 +1,5 @@
+import { Tip } from "@/components/ui/tooltip";
+import { confirmDialog } from "@/components/ui/confirm";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -35,9 +37,9 @@ export default function Dashboard() {
     });
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this document?")) return;
+    if (!(await confirmDialog({ title: "Delete this document?", action: "Delete", danger: true }))) return;
     deleteDoc.mutate(id, {
       onError: (err) => toast.error(errorMessage(err, "Failed to delete document")),
     });
@@ -180,13 +182,12 @@ export default function Dashboard() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-md border border-white/[0.06] bg-zinc-800 text-zinc-400">
                   <FileText className="h-5 w-5" />
                 </div>
-                <button
+                <Tip label="Unstar"><button
                   onClick={(e) => handleUnstar(doc._id, e)}
                   className="rounded-md bg-emerald-500/10 p-1.5 text-emerald-400 transition-colors hover:bg-emerald-500/20"
-                  title="Unstar"
                 >
                   <Star className="h-4 w-4 fill-current" />
-                </button>
+                </button></Tip>
               </div>
 
               <div className="min-h-0 flex-1">

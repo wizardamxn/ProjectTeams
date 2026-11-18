@@ -1,3 +1,6 @@
+import { confirmDialog } from "@/components/ui/confirm";
+import { Select } from "@/components/ui/select";
+import { Checkbox, Switch } from "@/components/ui/checkbox";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CheckCircle2, Copy, KeyRound, Loader2, Plus, Send, Trash2, X, XCircle } from "@/components/icons";
@@ -97,16 +100,16 @@ function HookForm({ initial, onDone, onSecret }: { initial?: Webhook; onDone: ()
           <span className="mb-1.5 block text-sm text-zinc-300">Name</span>
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="#announcements in Slack" className={inputCls} required />
         </label>
-        <label className="block">
+        <div>
           <span className="mb-1.5 block text-sm text-zinc-300">Send to</span>
-          <select value={format} onChange={(e) => setFormat(e.target.value as WebhookFormat)} className={inputCls}>
-            {FORMATS.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-        </label>
+          <Select
+            value={format}
+            onChange={setFormat}
+            options={FORMATS.map((f) => ({ value: f.id, label: f.label }))}
+            aria-label="Send to"
+            className="w-full"
+          />
+        </div>
       </div>
       <label className="block">
         <span className="mb-1.5 block text-sm text-zinc-300">Webhook URL</span>
@@ -117,12 +120,10 @@ function HookForm({ initial, onDone, onSecret }: { initial?: Webhook; onDone: ()
         <legend className="mb-2 text-sm text-zinc-300">Events</legend>
         <div className="grid gap-2 sm:grid-cols-2">
           {WEBHOOK_EVENTS.map((ev) => (
-            <label key={ev} className="flex items-center gap-2 text-sm text-zinc-300">
-              <input
-                type="checkbox"
+            <label key={ev} className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
+              <Checkbox
                 checked={events.includes(ev)}
-                onChange={(e) => setEvents((list) => (e.target.checked ? [...list, ev] : list.filter((x) => x !== ev)))}
-                className="h-4 w-4 accent-emerald-500"
+                onChange={(on) => setEvents((list) => (on ? [...list, ev] : list.filter((x) => x !== ev)))}
               />
               {EVENT_LABELS[ev]}
             </label>
@@ -192,13 +193,10 @@ function HookRow({ hook, onEdit, onSecret }: { hook: Webhook; onEdit: () => void
           </p>
           {hook.disabledReason && <p className="mt-1 text-xs text-amber-400">{hook.disabledReason}. Fix the URL, then turn it back on.</p>}
         </div>
-        <label className="flex items-center gap-2 text-xs text-zinc-400">
-          <input
-            type="checkbox"
-            role="switch"
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-400">
+          <Switch
             checked={hook.enabled}
-            onChange={(e) => update.mutate({ id: hook._id, enabled: e.target.checked }, { onError: (err) => toast.error(errorMessage(err, "Couldn't update")) })}
-            className="h-4 w-4 accent-emerald-500"
+            onChange={(on) => update.mutate({ id: hook._id, enabled: on }, { onError: (err) => toast.error(errorMessage(err, "Couldn't update")) })}
           />
           On
         </label>
@@ -225,8 +223,13 @@ function HookRow({ hook, onEdit, onSecret }: { hook: Webhook; onEdit: () => void
         </button>
         {hook.format === "json" && (
           <button
-            onClick={() =>
-              confirm("Make a new signing secret? The old one stops working right away.") &&
+            onClick={async () =>
+              (await confirmDialog({
+                title: "Make a new signing secret?",
+                body: "The old one stops working right away.",
+                action: "Make new secret",
+                danger: true,
+              })) &&
               rotate.mutate(hook._id, { onSuccess: (h) => onSecret(h.secret), onError: (err) => toast.error(errorMessage(err, "Couldn't rotate")) })
             }
             className="flex items-center gap-1 rounded-md border border-white/10 px-2 py-1 text-zinc-200 hover:bg-zinc-800"
@@ -235,7 +238,8 @@ function HookRow({ hook, onEdit, onSecret }: { hook: Webhook; onEdit: () => void
           </button>
         )}
         <button
-          onClick={() => confirm(`Delete "${hook.name}"?`) && del.mutate(hook._id, { onError: (err) => toast.error(errorMessage(err, "Couldn't delete")) })}
+          onClick={async () =>
+            (await confirmDialog({ title: `Delete "${hook.name}"?`, action: "Delete", danger: true })) && del.mutate(hook._id, { onError: (err) => toast.error(errorMessage(err, "Couldn't delete")) })}
           className="ml-auto flex items-center gap-1 rounded-md px-2 py-1 text-zinc-500 hover:text-red-400"
         >
           <Trash2 className="h-3 w-3" /> Delete
