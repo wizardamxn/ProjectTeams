@@ -211,7 +211,7 @@ export default function Layout() {
             <div className="max-w-[70%]">
               <WorkspaceSwitcher />
             </div>
-            <NotificationsBell align="right" />
+            <NotificationsBell placement="below" />
           </div>
         )}
         <Outlet />
