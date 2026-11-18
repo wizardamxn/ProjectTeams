@@ -1,0 +1,14 @@
+{
+  "name": "projectteams",
+  "private": true,
+  "description": "Project Teams — team chat, docs and an AI knowledge base. See apps/api and apps/web.",
+  "scripts": {
+    "install:all": "npm ci --prefix apps/api && npm ci --prefix apps/web",
+    "dev:api": "npm run dev --prefix apps/api",
+    "dev:worker": "npm run worker:dev --prefix apps/api",
+    "dev:web": "npm run dev --prefix apps/web",
+    "typecheck": "npm run typecheck --prefix apps/api && npm run typecheck --prefix apps/web",
+    "test": "npm test --prefix apps/api",
+    "build": "npm run build --prefix apps/api && npm run build --prefix apps/web"
+  }
+}
