@@ -83,7 +83,15 @@ export const conversationsService = {
         if (!general) throw err;
       }
     }
-    await join(general, [ctx.user._id]);
+    // Everyone in the workspace, not just the caller: otherwise people who haven't opened
+    // chat yet can't be mentioned, notified or reached in #general.
+    const [everyone, inGeneral] = await Promise.all([
+      Membership.find({ workspaceId: ctx.workspace._id }).select("userId").lean(),
+      ConversationMember.find({ conversationId: general._id }).select("userId").lean(),
+    ]);
+    const joined = new Set(inGeneral.map((m) => m.userId.toString()));
+    const missing = everyone.map((m) => m.userId).filter((id) => !joined.has(id.toString()));
+    await join(general, missing);
     return general;
   },
 
