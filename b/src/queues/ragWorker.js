@@ -8,6 +8,7 @@ import { chunkText } from "../utils/chunkText.js";
 import { embedChunks } from "../utils/embedChunks.js";
 
 const BUCKET = process.env.SUPABASE_BUCKET;
+const EMBED_BATCH_SIZE = 100;
 
 const extractText = async (buffer, mimeType) => {
   if (mimeType === "application/pdf") {
@@ -37,6 +38,10 @@ const ragWorker = new Worker(
       { ragStatus: "processing" },
       { new: true },
     );
+    if (!ragDocument) return { skipped: "document deleted" };
+
+    // A retry must start clean, or failed attempts leave duplicate chunks behind.
+    await RagChunk.deleteMany({ documentId });
 
     const { data, error } = await supabase.storage
       .from(BUCKET)
@@ -52,12 +57,20 @@ const ragWorker = new Worker(
       `[rag-processing] Extracted ${text.length} chars from ${storagePath}`,
     );
 
+    if (!text || !text.trim()) {
+      throw new Error("No readable text found (scanned PDFs are not supported yet)");
+    }
+
     const chunks = chunkText(text, { chunkSize: 1000, overlap: 150 });
     console.log(
       `[rag-processing] Split into ${chunks.length} chunks from ${storagePath}`,
     );
 
-    const embeddings = await embedChunks(chunks);
+    // Embed in batches so large documents stay under provider request limits.
+    const embeddings = [];
+    for (let i = 0; i < chunks.length; i += EMBED_BATCH_SIZE) {
+      embeddings.push(...(await embedChunks(chunks.slice(i, i + EMBED_BATCH_SIZE))));
+    }
     console.log(
       `[rag-processing] Embedded ${embeddings.length} chunks (dim ${embeddings[0]?.length}) from ${storagePath}`,
     );
@@ -85,7 +98,9 @@ ragWorker.on("completed", (job) => {
 
 ragWorker.on("failed", async (job, err) => {
   console.error(`[rag-processing] Job ${job?.id} failed:`, err.message);
-  if (job?.data?.documentId) {
+  // Only mark the document failed once BullMQ has used up its retries.
+  const attemptsLeft = (job?.opts?.attempts ?? 1) - (job?.attemptsMade ?? 0);
+  if (job?.data?.documentId && attemptsLeft <= 0) {
     await RagDocument.findByIdAndUpdate(job.data.documentId, {
       ragStatus: "failed",
     });

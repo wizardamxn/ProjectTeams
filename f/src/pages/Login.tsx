@@ -17,7 +17,11 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() =>
+    new URLSearchParams(window.location.search).has("expired")
+      ? "Your session expired. Please sign in again."
+      : "",
+  );
 
   const user = useSelector((s: any) => s.user.user);
   const isAuthChecking = useSelector((s: any) => s.user.isAuthChecking);

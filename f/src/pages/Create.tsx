@@ -101,7 +101,7 @@ export default function Create() {
     try {
       setImproving(true);
       const response = await api.post("/api/ai/improve-writing", { content });
-      setContent(response.data.improvedContent || content);
+      setContent(response.data.improvedText || content);
       toast.success("Writing improved");
     } catch (error: any) {
       toast.error("Failed to improve writing");

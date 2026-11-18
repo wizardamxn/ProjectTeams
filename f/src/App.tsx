@@ -14,6 +14,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { addUser, checkAuth } from "./store/slices/User";
 import axios from "axios";
 import { listenToMessages } from "./store/slices/SocketThunks";
+import socket from "./utils/socket";
 
 // --- Components & Pages ---
 import Layout from "./components/Layout"; // Make sure you created this file!
@@ -21,6 +22,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Documents from "./pages/Documents";
 import Editor from "./pages/Editor";
@@ -41,6 +43,7 @@ const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
   { path: "/signup", element: <Signup /> },
   { path: "/forgot-password", element: <ForgotPassword /> },
+  { path: "/reset-password", element: <ResetPassword /> },
 
   // --- Private Routes (Wrapped in Layout) ---
   {
@@ -85,8 +88,13 @@ const App = () => {
   }, [dispatch]);
 
   useEffect(() => {
+    // The socket authenticates with the session cookie, so it only connects
+    // once there is a logged-in user, and drops when they log out.
     if (user) {
       dispatch(listenToMessages());
+      if (!socket.connected) socket.connect();
+    } else if (socket.connected) {
+      socket.disconnect();
     }
   }, [user, dispatch]);
 

@@ -1,6 +1,10 @@
 import express from "express";
 import bcrypt from "bcrypt";
-import User from "../models/user.js";
+import crypto from "node:crypto";
+import validator from "validator";
+import User, { JWT_TTL_SECONDS } from "../models/user.js";
+import { authLimiter } from "../middlewares/rateLimits.js";
+import { sendMail } from "../utils/mailer.js";
 
 const authRouter = express.Router();
 
@@ -8,134 +12,169 @@ const authRouter = express.Router();
 // Same-origin deployment => SameSite=Lax (also works cross-port in local dev).
 // `secure` is decoupled from NODE_ENV: a Secure cookie is silently dropped over
 // plain HTTP, so flip COOKIE_SECURE=true only once HTTPS is terminating in front.
-const cookieOptions = {
+const baseCookieOptions = {
   httpOnly: true,
   sameSite: "lax",
   secure: process.env.COOKIE_SECURE === "true",
-  maxAge: 60 * 60 * 60 * 60 * 1000, // 1 hour
+};
+const cookieOptions = { ...baseCookieOptions, maxAge: JWT_TTL_SECONDS * 1000 };
+
+const RESET_TOKEN_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+// 8+ chars with at least one letter and one number. Kept simple on purpose;
+// length matters more than symbol rules.
+const PASSWORD_RULE = "Password must be at least 8 characters and include a letter and a number";
+const isPasswordOk = (password) =>
+  typeof password === "string" &&
+  password.length >= 8 &&
+  password.length <= 128 &&
+  /[a-zA-Z]/.test(password) &&
+  /\d/.test(password);
+
+const hashToken = (token) => crypto.createHash("sha256").update(token).digest("hex");
+
+const toSafeUser = (user) => {
+  const safe = user.toObject();
+  delete safe.password;
+  delete safe.resetTokenHash;
+  delete safe.resetTokenExpires;
+  return safe;
 };
 
+authRouter.use(["/login", "/register", "/forgot-password", "/reset-password"], authLimiter);
+
 /* ================= LOGIN ================= */
-authRouter.post("/login", async (req, res) => {
+authRouter.post("/login", async (req, res, next) => {
   try {
     const { email, password } = req.body;
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).send("Invalid Credentials");
+    if (typeof email !== "string" || typeof password !== "string") {
+      return res.status(400).json({ message: "Email and password are required" });
     }
 
-    const isPasswordCorrect = await user.isPasswordCorrect(password);
-    if (!isPasswordCorrect) {
-      return res.status(401).send("Invalid Credentials");
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    if (!user || !(await user.isPasswordCorrect(password))) {
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    const jwtToken = user.getJwtToken();
-
-    res.cookie("token", jwtToken, cookieOptions);
-
-    // Never ship the password hash back to the client.
-    const safeUser = user.toObject();
-    delete safeUser.password;
-    res.status(200).json(safeUser);
+    res.cookie("token", user.getJwtToken(), cookieOptions);
+    res.status(200).json(toSafeUser(user));
   } catch (err) {
-    res.status(500).send("ERROR: " + err.message);
+    next(err);
   }
 });
 
 /* ================= REGISTER ================= */
-authRouter.post("/register", async (req, res) => {
+authRouter.post("/register", async (req, res, next) => {
   try {
     const { fullName, email, password, teamCode } = req.body;
 
-    // 1. Basic validation
-    if (!fullName || !email || !password) {
+    if (!fullName || !email || !password || !teamCode) {
       return res.status(400).json({ message: "All fields are required" });
     }
-
-    if (password.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    if (typeof email !== "string" || !validator.isEmail(email.trim())) {
+      return res.status(400).json({ message: "Enter a valid email address" });
+    }
+    if (!isPasswordOk(password)) {
+      return res.status(400).json({ message: PASSWORD_RULE });
+    }
+    if (typeof teamCode !== "string" || !/^\d{8}$/.test(teamCode)) {
+      return res.status(400).json({ message: "Team code must be 8 digits" });
     }
 
-    // 2. Normalize email
-    const normalizedEmail = email.toLowerCase();
-
-    // 3. Hash password
-    const hash = await bcrypt.hash(password, 10);
-
-    // 4. Create user
-    await User.init(); // ensure indexes
-
     const user = await User.create({
-      fullName,
-      email: normalizedEmail,
-      password: hash,
+      fullName: String(fullName).trim(),
+      email: email.trim().toLowerCase(),
+      password: await bcrypt.hash(password, 10),
       teamCode,
     });
 
-    // 5. Generate JWT
-    const jwtToken = user.getJwtToken();
-
-    // 6. Set auth cookie (same options as login — see cookieOptions above)
-    res.cookie("token", jwtToken, cookieOptions);
-
-
+    res.cookie("token", user.getJwtToken(), cookieOptions);
     res.status(201).json({ message: "User registered successfully" });
-
   } catch (err) {
-
-    // 7. Handle duplicate email error
     if (err.code === 11000) {
       return res.status(409).json({ message: "Email already exists" });
     }
-
-    console.error(err);
-    res.status(500).json({ message: "Internal server error" });
+    if (err.name === "ValidationError") {
+      return res.status(400).json({ message: "Please check your details and try again" });
+    }
+    next(err);
   }
 });
 
+/* ================= FORGOT PASSWORD ================= */
+// Always answers the same way so it can't be used to find out which emails exist.
+authRouter.post("/forgot-password", async (req, res, next) => {
+  const genericReply = {
+    message: "If an account exists for that email, a reset link is on its way.",
+  };
+
+  try {
+    const { email } = req.body;
+    if (typeof email !== "string" || !validator.isEmail(email.trim())) {
+      return res.status(200).json(genericReply);
+    }
+
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    if (!user) return res.status(200).json(genericReply);
+
+    const token = crypto.randomBytes(32).toString("hex");
+    user.resetTokenHash = hashToken(token);
+    user.resetTokenExpires = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+    await user.save();
+
+    const appUrl = (process.env.APP_URL || "http://localhost:8080").replace(/\/$/, "");
+    const link = `${appUrl}/reset-password?token=${token}`;
+
+    await sendMail({
+      to: user.email,
+      subject: "Reset your Project Teams password",
+      text: `Hi ${user.fullName},\n\nReset your password here (valid for 30 minutes):\n${link}\n\nIf you didn't ask for this, ignore this email.`,
+      html: `<p>Hi ${validator.escape(user.fullName)},</p><p><a href="${link}">Reset your password</a> (valid for 30 minutes).</p><p>If you didn't ask for this, ignore this email.</p>`,
+    });
+
+    res.status(200).json(genericReply);
+  } catch (err) {
+    next(err);
+  }
+});
 
 /* ================= RESET PASSWORD ================= */
-// No email infrastructure exists in this app, so password reset is verified
-// via email + teamCode (the same "shared secret" used to join a team at signup)
-// instead of an emailed token.
-authRouter.post("/reset-password", async (req, res) => {
+authRouter.post("/reset-password", async (req, res, next) => {
   try {
-    const { email, teamCode, newPassword } = req.body;
+    const { token, newPassword } = req.body;
 
-    if (!email || !teamCode || !newPassword) {
-      return res.status(400).json({ message: "All fields are required" });
+    if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) {
+      return res.status(400).json({ message: "This reset link is invalid or has expired" });
+    }
+    if (!isPasswordOk(newPassword)) {
+      return res.status(400).json({ message: PASSWORD_RULE });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
-    }
-
-    const user = await User.findOne({ email: email.toLowerCase(), teamCode });
+    const user = await User.findOne({
+      resetTokenHash: hashToken(token),
+      resetTokenExpires: { $gt: new Date() },
+    });
     if (!user) {
-      return res.status(404).json({ message: "No account found with that email and team code" });
+      return res.status(400).json({ message: "This reset link is invalid or has expired" });
     }
 
     user.password = await bcrypt.hash(newPassword, 10);
+    user.passwordChangedAt = new Date(); // signs out every existing session
+    user.resetTokenHash = undefined;
+    user.resetTokenExpires = undefined;
     await user.save();
 
     res.status(200).json({ message: "Password reset successfully" });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Internal server error" });
+    next(err);
   }
 });
 
 /* ================= LOGOUT ================= */
 authRouter.post("/logout", (req, res) => {
   // Clear with attributes matching how it was set, or the browser keeps it.
-  res.clearCookie("token", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.COOKIE_SECURE === "true",
-  });
-
-  res.send("Logged out successfully");
+  res.clearCookie("token", baseCookieOptions);
+  res.json({ message: "Logged out successfully" });
 });
 
 export default authRouter;

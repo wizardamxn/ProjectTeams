@@ -10,7 +10,8 @@ const socketURL = import.meta.env.VITE_SOCKET_URL || undefined;
 const socket = io(socketURL, {
     withCredentials: true,
     transports: ["websocket"],
-    autoConnect: true,
+    // Connect only after login: the server rejects sockets without an auth cookie.
+    autoConnect: false,
 });
 
 export default socket;

@@ -10,7 +10,13 @@ import {
 } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
-import { joinChat, sendMessage, setHistory } from "@/store/slices/SocketThunks";
+import {
+  joinChat,
+  leaveChat,
+  sendMessage,
+  setActiveChat,
+  setHistory,
+} from "@/store/slices/SocketThunks";
 
 // --- Types ---
 interface TeamMember {
@@ -172,7 +178,6 @@ export const ChatMember = () => {
 
   const user = useSelector((store: any) => store?.user?.user);
   const userId = user?._id;
-  const senderName = user?.fullName;
 
   const messages = useSelector((state: any) => state?.chat?.messages);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -183,13 +188,13 @@ export const ChatMember = () => {
 
   useEffect(() => {
     if (!userId || !targetUserId) return;
-    dispatch(setHistory([]));
+    dispatch(leaveChat());
     setIsLoading(true);
 
     const loadChatFlow = async () => {
       try {
         const res = await axios.get(
-          `${backendURL}/api/chat/chat/${userId}/${targetUserId}`,
+          `${backendURL}/api/chat/with/${targetUserId}`,
           { withCredentials: true },
         );
         const data = res.data;
@@ -204,8 +209,9 @@ export const ChatMember = () => {
             },
           }),
         );
+        dispatch(setActiveChat(String(data._id)));
         dispatch(setHistory(formattedHistory));
-        dispatch(joinChat(userId, targetUserId));
+        dispatch(joinChat(targetUserId));
       } catch (error) {
         console.error("Chat load error", error);
       } finally {
@@ -221,15 +227,8 @@ export const ChatMember = () => {
   }, [messages, isLoading]);
 
   const handleSend = (text: string) => {
-    if (!text.trim()) return;
-    dispatch(
-      sendMessage({
-        senderName,
-        userId,
-        targetUserId,
-        text: text.trim(),
-      }),
-    );
+    if (!text.trim() || !targetUserId) return;
+    dispatch(sendMessage({ targetUserId, text: text.trim() }));
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {

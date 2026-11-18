@@ -4,13 +4,33 @@ import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
 import authorised from "../middlewares/authorised.js"; // Note: ESM often requires .js extensions
 import { searchChunks } from "../utils/searchChunks.js";
+import { aiLimiter } from "../middlewares/rateLimits.js";
 
 const aiRouter = express.Router();
+
+// Every AI endpoint costs money: logged-in users only, rate limited per user.
+aiRouter.use(authorised, aiLimiter);
+
+const MAX_CONTENT_CHARS = 20000;
+const MAX_QUESTION_CHARS = 1000;
+
+const readContent = (req, res) => {
+  const { content } = req.body;
+  if (typeof content !== "string" || !content.trim()) {
+    res.status(400).json({ error: "Missing content" });
+    return null;
+  }
+  if (content.length > MAX_CONTENT_CHARS) {
+    res.status(413).json({ error: `Content is longer than ${MAX_CONTENT_CHARS} characters` });
+    return null;
+  }
+  return content;
+};
 
 // Define the model
 const model = google("gemini-2.5-flash");
 
-// AI function
+// AI function (Phase 2 moves this into a service module)
 const useAI = async ({ model, prompt, system }) => {
   const { text } = await generateText({
     model,
@@ -25,8 +45,8 @@ const useAI = async ({ model, prompt, system }) => {
 // ==========================================
 aiRouter.post("/summarize", async (req, res) => {
   try {
-    const { content } = req.body;
-    if (!content) return res.status(400).json({ error: "Missing content" });
+    const content = readContent(req, res);
+    if (content === null) return;
 
     const summary = await useAI({
       model,
@@ -54,8 +74,8 @@ aiRouter.post("/summarize", async (req, res) => {
 // ==========================================
 aiRouter.post("/generate-tags", async (req, res) => {
   try {
-    const { content } = req.body;
-    if (!content) return res.status(400).json({ error: "Missing content" });
+    const content = readContent(req, res);
+    if (content === null) return;
 
     const tags = await useAI({
       model,
@@ -90,8 +110,8 @@ aiRouter.post("/generate-tags", async (req, res) => {
 // ==========================================
 aiRouter.post("/improve-writing", async (req, res) => {
   try {
-    const { content } = req.body;
-    if (!content) return res.status(400).json({ error: "Missing content" });
+    const content = readContent(req, res);
+    if (content === null) return;
 
     const improvedText = await useAI({
       model,
@@ -114,10 +134,15 @@ aiRouter.post("/improve-writing", async (req, res) => {
 // ==========================================
 // 4. ASK DOCS API (RAG)
 // ==========================================
-aiRouter.post("/ask-docs", authorised, async (req, res) => {
+aiRouter.post("/ask-docs", async (req, res) => {
   try {
     const { question } = req.body;
-    if (!question) return res.status(400).json({ error: "Missing question" });
+    if (typeof question !== "string" || !question.trim()) {
+      return res.status(400).json({ error: "Missing question" });
+    }
+    if (question.length > MAX_QUESTION_CHARS) {
+      return res.status(413).json({ error: "Question is too long" });
+    }
 
     const teamId = req.user.teamCode;
     const chunks = await searchChunks(question, teamId, 5);
