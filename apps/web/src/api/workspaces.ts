@@ -3,7 +3,7 @@ import { api } from "@/lib/api";
 import { useAppDispatch } from "@/store/hooks";
 import { checkAuth } from "@/store/slices/User";
 import { keys } from "./queryClient";
-import type { AuditFilter, AuditPage, Invite, InvitePreview, Member, Role } from "./types";
+import type { AuditFilter, AuditPage, Invite, InvitePreview, Member, Role, Webhook, WebhookDelivery, WebhookInput } from "./types";
 
 /**
  * Anything that changes which workspace you're in, or your role in it,
@@ -177,3 +177,49 @@ export const useDeleteWorkspace = () => {
     onSuccess: refresh,
   });
 };
+
+/* ---- Webhooks (admins) ---- */
+
+const hooksKey = ["workspace", "webhooks"] as const;
+
+export const useWebhooks = () =>
+  useQuery({ queryKey: hooksKey, queryFn: () => api.get<Webhook[]>("/workspaces/current/webhooks").then((r) => r.data) });
+
+const useHookMutation = <V, R>(fn: (v: V) => Promise<R>) => {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: fn, onSettled: () => qc.invalidateQueries({ queryKey: hooksKey }) });
+};
+
+export const useCreateWebhook = () =>
+  useHookMutation((input: WebhookInput) => api.post<Webhook>("/workspaces/current/webhooks", input).then((r) => r.data));
+
+export const useUpdateWebhook = () =>
+  useHookMutation(({ id, ...input }: Partial<WebhookInput> & { id: string }) =>
+    api.patch<Webhook>(`/workspaces/current/webhooks/${id}`, input).then((r) => r.data),
+  );
+
+export const useDeleteWebhook = () => useHookMutation((id: string) => api.delete(`/workspaces/current/webhooks/${id}`));
+
+export const useRotateWebhookSecret = () =>
+  useHookMutation((id: string) => api.post<Webhook>(`/workspaces/current/webhooks/${id}/rotate-secret`).then((r) => r.data));
+
+export const useTestWebhook = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api
+        .post<{ ok: boolean; statusCode: number | null; error: string | null; durationMs: number }>(`/workspaces/current/webhooks/${id}/test`)
+        .then((r) => r.data),
+    onSettled: (_d, _e, id) => {
+      qc.invalidateQueries({ queryKey: hooksKey });
+      qc.invalidateQueries({ queryKey: ["workspace", "webhooks", id, "deliveries"] });
+    },
+  });
+};
+
+export const useWebhookDeliveries = (id: string | null) =>
+  useQuery({
+    queryKey: ["workspace", "webhooks", id, "deliveries"],
+    queryFn: () => api.get<WebhookDelivery[]>(`/workspaces/current/webhooks/${id}/deliveries`).then((r) => r.data),
+    enabled: Boolean(id),
+  });

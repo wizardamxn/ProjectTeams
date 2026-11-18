@@ -12,10 +12,13 @@ import type { UserDoc } from "../models/user.js";
 import { workspacesService } from "../modules/workspaces/workspaces.service.js";
 import { emitToUsers, emitToWorkspace, setRealtimeServer, userRoom, workspaceRoom } from "./emitter.js";
 import { presence } from "./presence.js";
+import { registerDocSync } from "./docSync.js";
+import { MAX_UPDATE_BYTES } from "../modules/collab/collab.service.js";
 
-// Sockets only *deliver* events (new messages, edits, typing, presence,
-// notifications). Everything that changes data goes through the REST API,
-// which checks permissions and then publishes through ./emitter.ts.
+// Sockets mostly *deliver* events (new messages, edits, typing, presence,
+// notifications); those changes go through the REST API, which checks
+// permissions and then publishes through ./emitter.ts. The one exception is
+// live doc editing (./docSync.ts), which streams small edits both ways.
 
 interface SocketData {
   user: UserDoc;
@@ -38,7 +41,8 @@ const TYPING_THROTTLE_MS = 2000;
 export const initializeSocket = (server: HttpServer) => {
   const io = new Server<ClientEvents, ServerEvents, Record<string, never>, SocketData>(server, {
     cors: { origin: config.CORS_ORIGINS, credentials: true },
-    maxHttpBufferSize: 64 * 1024,
+    // Room for one large live-editing update (a big paste) plus framing.
+    maxHttpBufferSize: MAX_UPDATE_BYTES + 64 * 1024,
   });
 
   if (config.REALTIME_REDIS) {
@@ -64,6 +68,8 @@ export const initializeSocket = (server: HttpServer) => {
   io.on("connection", async (socket) => {
     const { user } = socket.data;
     const userId = user._id.toString();
+    // Before any await, so a doc:join sent right after connecting isn't missed.
+    registerDocSync(socket as never, user);
     await socket.join(userRoom(userId));
 
     // The workspace this socket works in. The client reconnects after switching.

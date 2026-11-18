@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { keys } from "./queryClient";
-import type { Doc, DocInput, DocVersion, DocVersionSummary, Folder } from "./types";
+import type { Doc, DocCommentThread, DocInput, DocVersion, DocVersionSummary, Folder } from "./types";
 
 export interface DocFilter {
   folderId?: string; // a folder id, or "none"
@@ -141,3 +141,36 @@ export const useCreateFolder = () =>
 export const useRenameFolder = () =>
   useFolderMutation(({ id, name }: { id: string; name: string }) => api.patch(`/doc/folders/${id}`, { name }));
 export const useDeleteFolder = () => useFolderMutation((id: string) => api.delete(`/doc/folders/${id}`));
+
+/* ---- Comments ---- */
+
+export const commentsKey = (docId: string) => ["docs", "comments", docId] as const;
+
+export const useComments = (docId: string) =>
+  useQuery({
+    queryKey: commentsKey(docId),
+    queryFn: () => api.get<DocCommentThread[]>(`/doc/doc/${docId}/comments`).then((r) => r.data),
+  });
+
+const useCommentMutation = <V, R>(docId: string, fn: (v: V) => Promise<R>) => {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: fn, onSettled: () => qc.invalidateQueries({ queryKey: commentsKey(docId) }) });
+};
+
+export const useAddComment = (docId: string) =>
+  useCommentMutation(docId, (v: { text: string; quote?: string; parentId?: string }) =>
+    api.post<{ _id: string; parentId: string | null }>(`/doc/doc/${docId}/comments`, v).then((r) => r.data),
+  );
+
+export const useEditComment = (docId: string) =>
+  useCommentMutation(docId, ({ id, text }: { id: string; text: string }) => api.patch(`/doc/doc/${docId}/comments/${id}`, { text }));
+
+export const useDeleteComment = (docId: string) =>
+  useCommentMutation(docId, (id: string) =>
+    api.delete<{ threadDeleted: boolean }>(`/doc/doc/${docId}/comments/${id}`).then((r) => r.data),
+  );
+
+export const useResolveComment = (docId: string) =>
+  useCommentMutation(docId, ({ id, resolved }: { id: string; resolved: boolean }) =>
+    api.post(`/doc/doc/${docId}/comments/${id}/resolve`, { resolved }),
+  );

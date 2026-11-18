@@ -4,7 +4,7 @@ import { AuditEvent, type AuditAction, type IAuditEvent } from "../../models/aud
 import type { WorkspaceContext } from "../workspaces/workspaces.service.js";
 
 export interface AuditTarget {
-  type: "workspace" | "member" | "invite" | "channel" | "doc" | "folder" | "file";
+  type: "workspace" | "member" | "invite" | "channel" | "doc" | "folder" | "file" | "webhook";
   id?: string;
   label?: string;
 }

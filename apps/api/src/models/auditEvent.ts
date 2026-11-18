@@ -18,6 +18,9 @@ export const AUDIT_ACTIONS = [
   "folder.deleted",
   "file.uploaded",
   "file.deleted",
+  "webhook.created",
+  "webhook.updated",
+  "webhook.deleted",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

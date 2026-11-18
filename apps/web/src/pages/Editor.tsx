@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   AlertCircle,
@@ -7,6 +8,7 @@ import {
   Check,
   Clock,
   Loader2,
+  MessageSquare,
   Sparkles,
   Star,
   Tag as TagIcon,
@@ -14,20 +16,23 @@ import {
   Wand2,
   X,
 } from "@/components/icons";
-import { useDeleteDoc, useDoc, useFolders, useRestoreVersion, useToggleStar, useUpdateDoc, useVersion, useVersions } from "@/api/docs";
+import { commentsKey, useComments, useDeleteDoc, useDoc, useFolders, useRestoreVersion, useToggleStar, useUpdateDoc, useVersion, useVersions } from "@/api/docs";
 import { useGenerateTags, useImproveWriting, useSummarize } from "@/api/ai";
-import type { RichDoc } from "@/api/types";
-import type { JSONContent } from "@tiptap/react";
 import { errorMessage } from "@/lib/api";
 import { formatRelativeTime } from "@/lib/format";
 import { useAppSelector } from "@/store/hooks";
 import { isAtLeast } from "@/store/slices/User";
 import { RichEditorContent, RichPreview, Toolbar } from "@/components/docs/RichEditor";
-import { useDocEditor } from "@/components/docs/docEditor";
+import { useLiveDocEditor, type Collaborator } from "@/components/docs/docEditor";
+import { CommentsPanel, type CommentDraft } from "@/components/docs/CommentsPanel";
+import socket from "@/utils/socket";
 
+// The body is edited live (shared with everyone who has the doc open) and
+// saved by the server. This page only autosaves the details: title, folder,
+// summary and tags.
 const AUTOSAVE_MS = 1500;
 type SaveState = "saved" | "dirty" | "saving" | "error";
-type Panel = "details" | "history" | null;
+type Panel = "details" | "history" | "comments" | null;
 
 export default function Editor() {
   const { doc_id } = useParams();
@@ -69,10 +74,15 @@ function DocEditor({ docId }: { docId: string }) {
   const [tagInput, setTagInput] = useState("");
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [savedAt, setSavedAt] = useState(new Date(doc!.updatedAt));
-  const [panel, setPanel] = useState<Panel>(() => (window.innerWidth >= 1280 ? "details" : null));
+  const [params, setParams] = useSearchParams();
+  const linkedComment = params.get("comment");
+  const [panel, setPanel] = useState<Panel>(() => (linkedComment ? "comments" : window.innerWidth >= 1280 ? "details" : null));
+  const [activeComment, setActiveComment] = useState<string | null>(linkedComment);
+  const [draft, setDraft] = useState<CommentDraft | null>(null);
+  const qc = useQueryClient();
 
-  // Pending changes are collected here and sent together.
-  const pending = useRef<Partial<{ title: string; contentJson: RichDoc; summary: string; tags: string[]; folderId: string | null }>>({});
+  // Pending detail changes are collected here and sent together.
+  const pending = useRef<Partial<{ title: string; summary: string; tags: string[]; folderId: string | null }>>({});
   const timer = useRef<number | undefined>(undefined);
 
   const flush = useCallback(() => {
@@ -133,7 +143,70 @@ function DocEditor({ docId }: { docId: string }) {
     return () => window.clearTimeout(t);
   }, [saveState, flush]);
 
-  const editor = useDocEditor({ content: doc!.contentJson, onChange: (json) => queue({ contentJson: json }) });
+  const { editor, status: liveStatus, people, loaded } = useLiveDocEditor({ docId, user: { _id: me?._id ?? "", fullName: me?.fullName ?? "Someone" } });
+
+  // Server events for this doc: body saved, comments changed, doc deleted.
+  useEffect(() => {
+    const onSaved = ({ docId: id, updatedAt }: { docId: string; updatedAt: string }) => id === docId && setSavedAt(new Date(updatedAt));
+    const onComments = ({ docId: id }: { docId: string }) => id === docId && qc.invalidateQueries({ queryKey: commentsKey(docId) });
+    const onDeleted = ({ docId: id }: { docId: string }) => {
+      if (id !== docId) return;
+      pending.current = {};
+      toast("This document was deleted");
+      navigate("/documents", { replace: true });
+    };
+    socket.on("doc:saved", onSaved);
+    socket.on("doc:comments", onComments);
+    socket.on("doc:deleted", onDeleted);
+    return () => {
+      socket.off("doc:saved", onSaved);
+      socket.off("doc:comments", onComments);
+      socket.off("doc:deleted", onDeleted);
+    };
+  }, [docId, qc, navigate]);
+
+  /* ---- Comments ---- */
+  const { data: threads = [] } = useComments(docId);
+  const openThreads = threads.filter((t) => !t.resolvedAt).length;
+  // Keep a new comment's target range in step with edits (yours and others') until it's saved.
+  const draftRef = useRef<CommentDraft | null>(null);
+  draftRef.current = draft;
+  useEffect(() => {
+    if (!editor) return;
+    const onTr = ({ transaction }: { transaction: { docChanged: boolean; mapping: { map: (pos: number, assoc?: number) => number } } }) => {
+      const d = draftRef.current;
+      if (!d || !transaction.docChanged) return;
+      setDraft({ ...d, range: { from: transaction.mapping.map(d.range.from, 1), to: transaction.mapping.map(d.range.to, -1) } });
+    };
+    editor.on("transaction", onTr);
+    return () => void editor.off("transaction", onTr);
+  }, [editor]);
+  // Clicking highlighted text opens its thread.
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom as HTMLElement;
+    const onClick = (e: MouseEvent) => {
+      const el = (e.target as HTMLElement).closest?.("[data-comment-id]");
+      const id = el?.getAttribute("data-comment-id");
+      if (!id) return;
+      setActiveComment(id);
+      setPanel("comments");
+    };
+    dom.addEventListener("click", onClick);
+    return () => dom.removeEventListener("click", onClick);
+  }, [editor]);
+  const startComment = () => {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    const quote = editor.state.doc.textBetween(from, to, " ").trim();
+    if (!quote) return toast("Select the text you want to comment on");
+    setDraft({ quote: quote.slice(0, 500), range: { from, to } });
+    setPanel("comments");
+  };
+  const selectComment = (id: string | null) => {
+    setActiveComment(id);
+    if (linkedComment) setParams({}, { replace: true });
+  };
 
   /* ---- AI helpers ---- */
   const summarize = useSummarize();
@@ -197,8 +270,13 @@ function DocEditor({ docId }: { docId: string }) {
   };
 
   const canDelete = doc!.createdBy === me?._id || isAdmin;
+  const savedLabel = `Saved ${formatRelativeTime(savedAt) === "Today" ? savedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : formatRelativeTime(savedAt)}`;
   const statusText =
-    saveState === "saving" ? "Saving…" : saveState === "dirty" ? "Unsaved changes" : saveState === "error" ? "Not saved, retrying" : `Saved ${formatRelativeTime(savedAt) === "Today" ? savedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : formatRelativeTime(savedAt)}`;
+    liveStatus === "offline" ? "Offline: your edits will sync when you're back"
+    : liveStatus === "error" ? "Couldn't connect to this doc"
+    : !loaded ? "Connecting…"
+    : saveState === "saving" ? "Saving…" : saveState === "dirty" ? "Unsaved changes" : saveState === "error" ? "Not saved, retrying" : savedLabel;
+  const statusWarn = liveStatus === "offline" || liveStatus === "error" || saveState === "error";
 
   return (
     <div className="-m-4 flex min-h-[100dvh] md:-m-8">
@@ -221,10 +299,24 @@ function DocEditor({ docId }: { docId: string }) {
               ))}
             </select>
 
-            <span className={`ml-auto flex items-center gap-1.5 text-xs ${saveState === "error" ? "text-red-400" : "text-zinc-500"}`} aria-live="polite">
-              {saveState === "saving" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : saveState === "error" ? <AlertCircle className="h-3.5 w-3.5" /> : saveState === "saved" ? <Check className="h-3.5 w-3.5" /> : null}
-              {statusText}
+            <span className={`ml-auto flex min-w-0 items-center gap-1.5 truncate text-xs ${statusWarn ? "text-amber-400" : "text-zinc-500"}`} aria-live="polite">
+              {!loaded || saveState === "saving" ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : statusWarn ? <AlertCircle className="h-3.5 w-3.5 shrink-0" /> : saveState === "saved" ? <Check className="h-3.5 w-3.5 shrink-0" /> : null}
+              <span className="truncate">{statusText}</span>
             </span>
+            <Presence people={people} />
+            <button
+              onClick={() => setPanel((p) => (p === "comments" ? null : "comments"))}
+              className={`relative rounded-md p-1.5 hover:bg-zinc-800 ${panel === "comments" ? "text-emerald-400" : "text-zinc-400 hover:text-white"}`}
+              aria-label={`Comments${openThreads ? ` (${openThreads} open)` : ""}`}
+              title="Comments"
+            >
+              <MessageSquare className="h-4 w-4" />
+              {openThreads > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-amber-500 px-0.5 text-[9px] font-bold text-zinc-950">
+                  {openThreads}
+                </span>
+              )}
+            </button>
             <button
               onClick={() => star.mutate(docId)}
               className={`rounded-md p-1.5 hover:bg-zinc-800 ${doc!.starred ? "text-amber-400" : "text-zinc-400 hover:text-white"}`}
@@ -252,8 +344,18 @@ function DocEditor({ docId }: { docId: string }) {
             </button>
           </div>
           {editor && (
-            <div className="border-t border-white/[0.04] px-3 py-1 md:px-6">
+            <div className="flex items-center gap-1 border-t border-white/[0.04] px-3 py-1 md:px-6">
               <Toolbar editor={editor} />
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={startComment}
+                disabled={!loaded}
+                className="ml-auto flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-white disabled:opacity-30"
+                title="Comment on the selected text"
+              >
+                <MessageSquare className="h-3.5 w-3.5" /> Comment
+              </button>
             </div>
           )}
         </div>
@@ -277,7 +379,16 @@ function DocEditor({ docId }: { docId: string }) {
             aria-label="Title"
             className="mb-6 w-full bg-transparent text-4xl font-bold tracking-tight text-zinc-100 outline-none placeholder:text-zinc-700"
           />
-          <RichEditorContent editor={editor} />
+          {!loaded && liveStatus !== "error" ? (
+            <div className="space-y-3" aria-hidden>
+              {[90, 75, 82, 40].map((w) => (
+                <div key={w} className="h-4 animate-pulse rounded bg-zinc-800/70" style={{ width: `${w}%` }} />
+              ))}
+            </div>
+          ) : (
+            <RichEditorContent editor={editor} />
+          )}
+          {activeComment && <style>{`.doc-comment[data-comment-id="${CSS.escape(activeComment)}"]{background:rgb(245 158 11 / 0.35)}`}</style>}
         </div>
       </div>
 
@@ -285,7 +396,7 @@ function DocEditor({ docId }: { docId: string }) {
       {panel && (
         <aside className="fixed inset-y-0 right-0 z-30 w-full max-w-sm overflow-y-auto border-l border-white/[0.06] bg-zinc-950 xl:sticky xl:top-0 xl:h-[100dvh] xl:w-80">
           <div className="flex h-12 items-center justify-between border-b border-white/[0.06] px-4">
-            <h2 className="text-sm font-semibold text-zinc-100">{panel === "details" ? "Details" : "Version history"}</h2>
+            <h2 className="text-sm font-semibold text-zinc-100">{panel === "details" ? "Details" : panel === "comments" ? "Comments" : "Version history"}</h2>
             <button onClick={() => setPanel(null)} className="rounded-md p-1 text-zinc-500 hover:text-white" aria-label="Close panel">
               <X className="h-4 w-4" />
             </button>
@@ -347,6 +458,7 @@ function DocEditor({ docId }: { docId: string }) {
 
               <section className="space-y-1 text-xs text-zinc-500">
                 <p>Created by {doc!.author.name} · {new Date(doc!.createdAt).toLocaleDateString()}</p>
+                <p>Everyone with this doc open edits it together; changes save on their own.</p>
                 <p>Ask in Knowledge can answer from this doc a minute after you stop typing.</p>
               </section>
 
@@ -356,12 +468,20 @@ function DocEditor({ docId }: { docId: string }) {
                 </button>
               )}
             </div>
+          ) : panel === "comments" ? (
+            <CommentsPanel
+              docId={docId}
+              editor={editor}
+              draft={draft}
+              onDraftDone={() => setDraft(null)}
+              activeId={activeComment}
+              setActiveId={selectComment}
+            />
           ) : (
-            <History docId={docId} onRestored={(json, t) => {
-              pending.current = {};
+            // The restored text arrives through live editing, for everyone at once.
+            <History docId={docId} onRestored={(t) => {
+              delete pending.current.title;
               setTitle(t);
-              editor?.commands.setContent(json as JSONContent, { emitUpdate: false });
-              setSaveState("saved");
             }} />
           )}
         </aside>
@@ -383,7 +503,32 @@ function AiButton({ icon, label, busy, onClick }: { icon: React.ReactNode; label
   );
 }
 
-function History({ docId, onRestored }: { docId: string; onRestored: (json: RichDoc, title: string) => void }) {
+/** Avatars of the other people in this doc right now. */
+function Presence({ people }: { people: Collaborator[] }) {
+  if (people.length === 0) return null;
+  const shown = people.slice(0, 4);
+  return (
+    <div className="flex -space-x-1.5" aria-label={`Also here: ${people.map((p) => p.name).join(", ")}`}>
+      {shown.map((p) => (
+        <span
+          key={p.clientId}
+          title={`${p.name} is here`}
+          className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold text-white ring-2 ring-zinc-950"
+          style={{ backgroundColor: p.color }}
+        >
+          {p.name.charAt(0).toUpperCase()}
+        </span>
+      ))}
+      {people.length > shown.length && (
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-[10px] text-zinc-200 ring-2 ring-zinc-950">
+          +{people.length - shown.length}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function History({ docId, onRestored }: { docId: string; onRestored: (title: string) => void }) {
   const { data: versions = [], isLoading } = useVersions(docId);
   const [selected, setSelected] = useState<string | null>(null);
   const { data: version } = useVersion(docId, selected);
@@ -418,7 +563,7 @@ function History({ docId, onRestored }: { docId: string; onRestored: (json: Rich
                       { docId, versionId: v._id },
                       {
                         onSuccess: (doc) => {
-                          onRestored(doc.contentJson!, doc.title);
+                          onRestored(doc.title);
                           setSelected(null);
                           toast.success("Restored. The version you replaced is in history too.");
                         },

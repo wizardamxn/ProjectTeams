@@ -21,3 +21,8 @@ export const emitToUsers = (userIds: Iterable<string>, event: string, payload: u
 export const emitToWorkspace = (workspaceId: string, event: string, payload: unknown) => {
   io?.to(workspaceRoom(workspaceId)).emit(event, payload);
 };
+
+/** Any named room (e.g. `doc:<id>` for people with a doc open). */
+export const emitToRoom = (room: string, event: string, payload: unknown) => {
+  io?.to(room).emit(event, payload);
+};

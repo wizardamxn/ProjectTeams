@@ -15,6 +15,9 @@ import { RagChunk } from "../../models/ragChunk.js";
 import { RagDocument } from "../../models/ragDocument.js";
 import { User } from "../../models/user.js";
 import { Workspace } from "../../models/workspace.js";
+import { DocComment } from "../../models/docComment.js";
+import { DocUpdate } from "../../models/docUpdate.js";
+import { Webhook, WebhookDelivery } from "../../models/webhook.js";
 import { emitToUsers } from "../../realtime/emitter.js";
 import type { WorkspaceContext } from "./workspaces.service.js";
 
@@ -51,6 +54,7 @@ export const deleteWorkspace = async (ctx: WorkspaceContext, confirmName: string
   await Workspace.deleteOne({ _id: wsId });
 
   const conversationIds = (await Conversation.find({ workspaceId: wsId }).select("_id").lean()).map((c) => c._id);
+  const docIds = (await Document.find({ teamId: key }).select("_id").lean()).map((d) => d._id);
   await Promise.all([
     Document.deleteMany({ teamId: key }),
     DocumentVersion.deleteMany({ teamId: key }),
@@ -64,6 +68,10 @@ export const deleteWorkspace = async (ctx: WorkspaceContext, confirmName: string
     Invite.deleteMany({ workspaceId: wsId }),
     AuditEvent.deleteMany({ workspaceId: wsId }),
     Chat.deleteMany({ workspaceId: wsId }),
+    DocComment.deleteMany({ teamId: key }),
+    DocUpdate.deleteMany({ docId: { $in: docIds } }),
+    Webhook.deleteMany({ workspaceId: wsId }),
+    WebhookDelivery.deleteMany({ workspaceId: wsId }),
     User.updateMany({ activeWorkspaceId: wsId }, { $unset: { activeWorkspaceId: 1 } }),
     // A migrated team code would otherwise recreate an empty "Team 1234" on next sign-in.
     ...(ctx.workspace.legacyTeamCode ? [User.updateMany({ teamCode: ctx.workspace.legacyTeamCode }, { $unset: { teamCode: 1 } })] : []),

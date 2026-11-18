@@ -72,7 +72,15 @@ export function useRealtime() {
 
     const onNotification = (n: Omit<AppNotification, "read" | "conversationName">) => {
       qc.invalidateQueries({ queryKey: keys.notifications });
-      if (n.type === "mention") {
+      if (n.type === "doc_comment") {
+        if (window.location.pathname === `/editor/${n.docId}` && !document.hidden) return;
+        toast(`${n.actor.fullName} commented on a doc`, {
+          description: n.preview || undefined,
+          action: { label: "Open", onClick: () => navigate(`/editor/${n.docId}?comment=${n.commentId}`) },
+        });
+        return;
+      }
+      if (n.type === "mention" && n.conversationId) {
         patchConversation(qc, n.conversationId, (c) => ({ ...c, mentionCount: c.mentionCount + 1 }));
       }
       // No toast if you're already looking at it.

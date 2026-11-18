@@ -62,7 +62,7 @@ export default function NotificationsBell({ label, align = "left" }: { label?: R
           <ul className="custom-scrollbar max-h-96 overflow-y-auto">
             {isLoading && <li className="py-6"><Loader2 className="mx-auto h-4 w-4 animate-spin text-zinc-500" /></li>}
             {!isLoading && (data?.items.length ?? 0) === 0 && (
-              <li className="px-4 py-8 text-center text-sm text-zinc-500">You're all caught up. Mentions and replies show up here.</li>
+              <li className="px-4 py-8 text-center text-sm text-zinc-500">You're all caught up. Mentions, replies and doc comments show up here.</li>
             )}
             {data?.items.map((n) => (
               <li key={n._id}>
@@ -70,7 +70,11 @@ export default function NotificationsBell({ label, align = "left" }: { label?: R
                   onClick={() => {
                     setOpen(false);
                     if (!n.read) markRead.mutate([n._id]);
-                    navigate(`/chat/${n.conversationId}${n.threadRootId ? `?thread=${n.threadRootId}` : ""}`);
+                    navigate(
+                      n.type === "doc_comment"
+                        ? `/editor/${n.docId}?comment=${n.commentId}`
+                        : `/chat/${n.conversationId}${n.threadRootId ? `?thread=${n.threadRootId}` : ""}`,
+                    );
                   }}
                   className={`flex w-full gap-3 px-3 py-2.5 text-left hover:bg-white/[0.04] ${n.read ? "" : "bg-emerald-500/[0.05]"}`}
                 >
@@ -78,7 +82,7 @@ export default function NotificationsBell({ label, align = "left" }: { label?: R
                   <span className="min-w-0 flex-1">
                     <span className="block text-xs text-zinc-400">
                       <span className="font-semibold text-zinc-100">{n.actor.fullName}</span>{" "}
-                      {n.type === "mention" ? "mentioned you in" : "replied in a thread in"} {n.conversationName}
+                      {n.type === "mention" ? "mentioned you in" : n.type === "doc_comment" ? "commented on" : "replied in a thread in"} {n.conversationName}
                     </span>
                     {n.preview && <span className="mt-0.5 line-clamp-2 block text-sm text-zinc-300">{n.preview}</span>}
                     <span className="mt-0.5 block text-[11px] text-zinc-500">{formatRelativeTime(n.createdAt)}</span>

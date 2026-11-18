@@ -12,6 +12,8 @@ import { AUDIT_ACTIONS } from "../../models/auditEvent.js";
 import { exportLimiter } from "../../middleware/rateLimits.js";
 import { badRequest } from "../../lib/errors.js";
 import { deleteWorkspace } from "./deleteWorkspace.js";
+import { webhooks } from "../webhooks/webhooks.service.js";
+import { WEBHOOK_EVENTS, WEBHOOK_FORMATS } from "../../models/webhook.js";
 import { workspacesService } from "./workspaces.service.js";
 
 const nameSchema = z.object({
@@ -19,6 +21,15 @@ const nameSchema = z.object({
 });
 
 const roleSchema = z.object({ role: z.enum(ROLES) });
+
+const webhookSchema = z.object({
+  name: z.string().trim().min(1, "Give it a name").max(80),
+  url: z.string().trim().min(1, "Enter the URL").max(2000),
+  format: z.enum(WEBHOOK_FORMATS).default("json"),
+  events: z.array(z.enum(WEBHOOK_EVENTS)).min(1, "Pick at least one event"),
+  enabled: z.boolean().optional(),
+});
+const webhookPatchSchema = webhookSchema.partial().refine((v) => Object.keys(v).length > 0, "Nothing to change");
 
 const deleteSchema = z.object({ confirmName: z.string({ required_error: "Type the workspace name to confirm" }) });
 
@@ -141,4 +152,35 @@ current.post("/invites", requireRole("admin"), validateBody(inviteSchema), async
 current.delete("/invites/:inviteId", requireObjectIds("inviteId"), requireRole("admin"), async (req, res) => {
   await invitesService.revoke(ctxOf(req), String(req.params.inviteId));
   res.json({ ok: true });
+});
+
+/* ---- Webhooks (admins) ---- */
+
+current.get("/webhooks", requireRole("admin"), async (req, res) => {
+  res.json(await webhooks.list(ctxOf(req)));
+});
+
+current.post("/webhooks", requireRole("admin"), validateBody(webhookSchema), async (req, res) => {
+  res.status(201).json(await webhooks.create(ctxOf(req), req.body));
+});
+
+current.patch("/webhooks/:hookId", requireObjectIds("hookId"), requireRole("admin"), validateBody(webhookPatchSchema), async (req, res) => {
+  res.json(await webhooks.update(ctxOf(req), String(req.params.hookId), req.body));
+});
+
+current.delete("/webhooks/:hookId", requireObjectIds("hookId"), requireRole("admin"), async (req, res) => {
+  await webhooks.remove(ctxOf(req), String(req.params.hookId));
+  res.json({ ok: true });
+});
+
+current.post("/webhooks/:hookId/test", requireObjectIds("hookId"), requireRole("admin"), async (req, res) => {
+  res.json(await webhooks.test(ctxOf(req), String(req.params.hookId)));
+});
+
+current.post("/webhooks/:hookId/rotate-secret", requireObjectIds("hookId"), requireRole("admin"), async (req, res) => {
+  res.json(await webhooks.rotateSecret(ctxOf(req), String(req.params.hookId)));
+});
+
+current.get("/webhooks/:hookId/deliveries", requireObjectIds("hookId"), requireRole("admin"), async (req, res) => {
+  res.json(await webhooks.deliveries(ctxOf(req), String(req.params.hookId)));
 });

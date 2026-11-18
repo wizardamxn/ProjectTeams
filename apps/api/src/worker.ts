@@ -3,6 +3,8 @@ import { logger } from "./lib/logger.js";
 import { closeRedis } from "./lib/redis.js";
 import { RAG_QUEUE } from "./queues/ragQueue.js";
 import { startRagWorker } from "./queues/ragWorker.js";
+import { WEBHOOK_QUEUE } from "./queues/webhookQueue.js";
+import { startWebhookWorker } from "./queues/webhookWorker.js";
 
 try {
   await connectDB();
@@ -11,12 +13,12 @@ try {
   process.exit(1);
 }
 
-const worker = startRagWorker();
-logger.info(`RAG worker listening on '${RAG_QUEUE}'`);
+const workers = [startRagWorker(), startWebhookWorker()];
+logger.info(`Worker listening on '${RAG_QUEUE}' and '${WEBHOOK_QUEUE}'`);
 
 // PM2 sends SIGTERM (see ecosystem config); let the in-flight job finish.
 process.on("SIGTERM", async () => {
-  await worker.close();
+  await Promise.allSettled(workers.map((w) => w.close()));
   await Promise.allSettled([disconnectDB(), closeRedis()]);
   process.exit(0);
 });

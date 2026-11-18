@@ -1,9 +1,11 @@
 import { Router } from "express";
+import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
-import { requireObjectIds, validateBody } from "../../middleware/validate.js";
+import { objectId, requireObjectIds, validateBody } from "../../middleware/validate.js";
 import { ctxOf, requireWorkspace } from "../../middleware/workspace.js";
 import { createDocSchema, folderSchema, updateDocSchema } from "./docs.schemas.js";
 import { docsService, presentDoc } from "./docs.service.js";
+import { commentsService } from "./comments.service.js";
 
 // Mounted at /api/doc (original paths kept so older clients keep working).
 export const docsRouter = Router();
@@ -98,5 +100,39 @@ docsRouter.patch("/folders/:folderId", requireObjectIds("folderId"), validateBod
 
 docsRouter.delete("/folders/:folderId", requireObjectIds("folderId"), async (req, res) => {
   await docsService.deleteFolder(ctxOf(req), id(req.params.folderId));
+  res.json({ ok: true });
+});
+
+/* ---- Comments ---- */
+
+const commentText = z.string({ required_error: "Write a comment" }).trim().min(1, "Write a comment").max(5000, "Comment is too long");
+const newCommentSchema = z.object({
+  text: commentText,
+  quote: z.string().trim().max(500).optional(),
+  parentId: objectId.optional(),
+});
+const editCommentSchema = z.object({ text: commentText });
+const resolveSchema = z.object({ resolved: z.boolean() });
+
+docsRouter.get("/doc/:doc_id/comments", async (req, res) => {
+  res.json(await commentsService.list(ctxOf(req), id(req.params.doc_id)));
+});
+
+docsRouter.post("/doc/:doc_id/comments", validateBody(newCommentSchema), async (req, res) => {
+  const c = await commentsService.create(ctxOf(req), id(req.params.doc_id), req.body);
+  res.status(201).json({ _id: c._id.toString(), parentId: c.parentId?.toString() ?? null });
+});
+
+docsRouter.patch("/doc/:doc_id/comments/:commentId", requireObjectIds("commentId"), validateBody(editCommentSchema), async (req, res) => {
+  await commentsService.edit(ctxOf(req), id(req.params.doc_id), id(req.params.commentId), req.body.text);
+  res.json({ ok: true });
+});
+
+docsRouter.delete("/doc/:doc_id/comments/:commentId", requireObjectIds("commentId"), async (req, res) => {
+  res.json(await commentsService.remove(ctxOf(req), id(req.params.doc_id), id(req.params.commentId)));
+});
+
+docsRouter.post("/doc/:doc_id/comments/:commentId/resolve", requireObjectIds("commentId"), validateBody(resolveSchema), async (req, res) => {
+  await commentsService.setResolved(ctxOf(req), id(req.params.doc_id), id(req.params.commentId), req.body.resolved);
   res.json({ ok: true });
 });

@@ -6,6 +6,7 @@ import { storage } from "../../lib/storage.js";
 import { conflict } from "../../lib/errors.js";
 import { Conversation, ConversationMember } from "../../models/conversation.js";
 import { Document } from "../../models/document.js";
+import { DocComment } from "../../models/docComment.js";
 import { Folder } from "../../models/folder.js";
 import { Membership } from "../../models/membership.js";
 import { Message } from "../../models/message.js";
@@ -223,7 +224,7 @@ export const exportService = {
 
     await sendZip(res, `my-project-teams-data-${today()}.zip`, async (zip) => {
       await zip.add(
-        `Your Project Teams data\nExported ${new Date().toISOString()}\n\nprofile.json      your account\nworkspaces.json   workspaces you're in\ndocs/             documents you created, as Markdown\nmessages.jsonl    every message you've sent, in any conversation (one JSON object per line)\n`,
+        `Your Project Teams data\nExported ${new Date().toISOString()}\n\nprofile.json      your account\nworkspaces.json   workspaces you're in\ndocs/             documents you created, as Markdown\nmessages.jsonl    every message you've sent, in any conversation (one JSON object per line)\ncomments.jsonl    every comment you've left on a doc\n`,
         "README.txt",
       );
       await zip.add(
@@ -274,6 +275,29 @@ export const exportService = {
           })(),
         ),
         "messages.jsonl",
+      );
+
+      const docTitles = new Map<string, string>();
+      await zip.add(
+        jsonLines(
+          (async function* () {
+            const cursor = DocComment.find({ authorId: user._id }).sort({ _id: 1 }).lean().cursor();
+            for await (const c of cursor) {
+              const key = c.docId.toString();
+              if (!docTitles.has(key)) docTitles.set(key, (await Document.findById(c.docId).select("title").lean())?.title ?? "(deleted)");
+              yield {
+                id: c._id.toString(),
+                createdAt: c.createdAt,
+                workspace: wsName.get(c.teamId) ?? "(deleted)",
+                doc: docTitles.get(key),
+                text: c.text,
+                quote: c.quote ?? null,
+                isReply: Boolean(c.parentId),
+              };
+            }
+          })(),
+        ),
+        "comments.jsonl",
       );
     });
   },

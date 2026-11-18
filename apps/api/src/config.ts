@@ -56,6 +56,12 @@ const schema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   SUPABASE_BUCKET: z.string().optional(),
 
+  // Let webhooks call private/local addresses (only for testing on your own machine).
+  WEBHOOKS_ALLOW_PRIVATE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+
   // How long audit log events are kept before they expire.
   AUDIT_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(365),
 

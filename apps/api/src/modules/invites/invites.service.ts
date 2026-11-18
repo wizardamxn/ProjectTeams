@@ -9,6 +9,7 @@ import { User, type UserDoc } from "../../models/user.js";
 import { Workspace } from "../../models/workspace.js";
 import type { WorkspaceContext } from "../workspaces/workspaces.service.js";
 import { auditService } from "../audit/audit.service.js";
+import { webhooks } from "../webhooks/webhooks.service.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -147,6 +148,7 @@ export const invitesService = {
         { role: invite.role, via: invite.email ? "email invite" : "invite link" },
         ip,
       );
+      webhooks.dispatch(invite.workspaceId, "member.joined", { member: { id: user._id.toString(), name: user.fullName }, role: invite.role });
     }
 
     user.activeWorkspaceId = invite.workspaceId;

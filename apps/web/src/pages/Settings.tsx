@@ -1,20 +1,22 @@
 import { useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Activity, AlertTriangle, Download, Loader2, Settings as SettingsIcon, Trash2, X } from "@/components/icons";
+import { Activity, AlertTriangle, Download, Loader2, Settings as SettingsIcon, Trash2, X, Zap } from "@/components/icons";
+import { Integrations } from "@/components/settings/Integrations";
 import { downloadAuditCsv, exportUrl, useAuditLog, useDeleteWorkspace, useMembers } from "@/api/workspaces";
 import { AUDIT_ACTIONS, type AuditAction, type AuditEvent, type AuditFilter } from "@/api/types";
 import { errorMessage } from "@/lib/api";
 import { useAppSelector } from "@/store/hooks";
 import { isAtLeast } from "@/store/slices/User";
 
-type Tab = "general" | "audit";
+type Tab = "general" | "integrations" | "audit";
 
 export default function Settings() {
   const role = useAppSelector((s) => s.user.role);
   const isAdmin = isAtLeast(role, "admin");
   const [params, setParams] = useSearchParams();
-  const tab: Tab = params.get("tab") === "audit" && isAdmin ? "audit" : "general";
+  const requested = params.get("tab");
+  const tab: Tab = isAdmin && (requested === "audit" || requested === "integrations") ? requested : "general";
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -28,6 +30,7 @@ export default function Settings() {
           {(
             [
               ["general", "General", SettingsIcon],
+              ["integrations", "Integrations", Zap],
               ["audit", "Audit log", Activity],
             ] as const
           ).map(([id, label, Icon]) => (
@@ -46,7 +49,7 @@ export default function Settings() {
         </div>
       )}
 
-      {tab === "audit" ? <AuditLog /> : <General />}
+      {tab === "audit" ? <AuditLog /> : tab === "integrations" ? <Integrations /> : <General />}
     </div>
   );
 }
@@ -208,6 +211,9 @@ const ACTION_LABELS: Record<AuditAction, string> = {
   "folder.deleted": "Folder deleted",
   "file.uploaded": "File uploaded",
   "file.deleted": "File deleted",
+  "webhook.created": "Webhook added",
+  "webhook.updated": "Webhook changed",
+  "webhook.deleted": "Webhook deleted",
 };
 
 const str = (v: unknown) => (typeof v === "string" ? v : v === undefined || v === null ? "" : String(v));
@@ -249,6 +255,12 @@ const describeEvent = (e: AuditEvent): string => {
       return `uploaded ${t}`;
     case "file.deleted":
       return `deleted ${t}`;
+    case "webhook.created":
+      return `added the webhook "${t}"${m.url ? ` (${str(m.url)})` : ""}`;
+    case "webhook.updated":
+      return Array.isArray(m.changed) && m.changed.length === 1 && m.changed[0] === "secret" ? `rotated the secret of "${t}"` : `changed the webhook "${t}"`;
+    case "webhook.deleted":
+      return `deleted the webhook "${t}"`;
   }
 };
 

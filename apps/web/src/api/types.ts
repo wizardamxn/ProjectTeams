@@ -188,11 +188,15 @@ export interface Thread {
 
 export interface AppNotification {
   _id: string;
-  type: "mention" | "thread_reply";
-  conversationId: string;
+  type: "mention" | "thread_reply" | "doc_comment";
+  /** Null for doc comments. */
+  conversationId: string | null;
+  /** The channel/DM name, or the doc's title for doc comments. */
   conversationName: string;
-  messageId: string;
+  messageId: string | null;
   threadRootId: string | null;
+  docId?: string | null;
+  commentId?: string | null;
   actor: Person;
   preview: string;
   read: boolean;
@@ -261,6 +265,71 @@ export interface SearchResults {
 
 /* ---- Audit log ---- */
 
+/* ---- Doc comments ---- */
+
+export interface CommentAuthor {
+  _id: string;
+  fullName: string;
+  avatarUrl?: string;
+}
+
+export interface DocCommentReply {
+  _id: string;
+  author: CommentAuthor;
+  text: string;
+  createdAt: string;
+  editedAt: string | null;
+}
+
+export interface DocCommentThread extends DocCommentReply {
+  quote: string;
+  resolvedAt: string | null;
+  resolvedBy: CommentAuthor | null;
+  replies: DocCommentReply[];
+}
+
+/* ---- Webhooks ---- */
+
+export const WEBHOOK_EVENTS = ["message.created", "doc.created", "doc.deleted", "comment.created", "member.joined", "file.uploaded"] as const;
+export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
+export type WebhookFormat = "json" | "slack" | "discord";
+
+export interface Webhook {
+  _id: string;
+  name: string;
+  url: string;
+  format: WebhookFormat;
+  events: WebhookEvent[];
+  enabled: boolean;
+  /** Full only right after create / rotate; masked otherwise. */
+  secret: string;
+  lastDeliveryAt: string | null;
+  lastStatus: "success" | "failed" | null;
+  failureCount: number;
+  disabledReason: string | null;
+  createdAt: string;
+}
+
+export interface WebhookInput {
+  name: string;
+  url: string;
+  format: WebhookFormat;
+  events: WebhookEvent[];
+  enabled?: boolean;
+}
+
+export interface WebhookDelivery {
+  _id: string;
+  event: string;
+  deliveryId: string;
+  attempt: number;
+  status: "success" | "failed";
+  statusCode: number | null;
+  error: string | null;
+  durationMs: number;
+  createdAt: string;
+}
+
 export const AUDIT_ACTIONS = [
   "workspace.renamed",
   "workspace.exported",
@@ -278,6 +347,9 @@ export const AUDIT_ACTIONS = [
   "folder.deleted",
   "file.uploaded",
   "file.deleted",
+  "webhook.created",
+  "webhook.updated",
+  "webhook.deleted",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

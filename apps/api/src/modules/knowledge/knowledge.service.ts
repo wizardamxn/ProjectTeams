@@ -12,6 +12,7 @@ import type { WorkspaceContext } from "../workspaces/workspaces.service.js";
 import { enqueueIngest } from "../../queues/ragQueue.js";
 import { safeFileName } from "./ingest.js";
 import { auditService } from "../audit/audit.service.js";
+import { webhooks } from "../webhooks/webhooks.service.js";
 
 export interface RetrievedChunk {
   _id: Types.ObjectId;
@@ -87,6 +88,10 @@ export const knowledgeService = {
       uploadedBy: ctx.user._id,
     });
     auditService.record(ctx, "file.uploaded", { type: "file", id: doc._id.toString(), label: doc.fileName }, { size: file.size });
+    webhooks.dispatch(ctx.workspace._id, "file.uploaded", {
+      file: { id: doc._id.toString(), name: doc.fileName, size: file.size, mimeType: file.mimetype },
+      actor: { id: ctx.user._id.toString(), name: ctx.user.fullName },
+    });
     // New files are indexed straight away (the "Index" button is only for retries).
     await this.startIndexing(ctx, doc._id.toString()).catch((err) =>
       logger.warn({ err, documentId: doc._id.toString() }, "Could not queue file indexing"),

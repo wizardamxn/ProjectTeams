@@ -5,6 +5,9 @@ Team chat, shared docs and an AI knowledge base you can ask questions, in one wo
 ## What's in it today
 
 - **Chat**: public and private channels, DMs and group DMs, threads, @mentions, file and image sharing, edit/delete, unread counts, typing indicators, online presence and a notifications inbox.
+- **Live co-editing**: everyone with a doc open edits it together, with each other's cursors and names; edits made offline sync on reconnect.
+- **Comments**: highlight text and start a thread; reply, resolve, reopen; the doc's author and thread participants are notified.
+- **Integrations**: webhooks to Slack, Discord or your own endpoint (signed), for new docs, comments, public-channel messages, new members and uploads, with retries and a delivery log.
 - **Docs**: rich-text editor (headings, lists, checklists, links, code) with auto-save, version history and restore, folders, personal stars, and AI summaries, tags and rewriting.
 - **Knowledge**: ask a question and get an answer from your workspace with numbered, clickable sources. Docs, uploaded files (PDF, text, Markdown, CSV) and public channels are indexed automatically; private channels and DMs never are (RAG on MongoDB Atlas Vector Search).
 - **Search**: Ctrl/⌘K searches docs, files and the messages you can see.
@@ -98,6 +101,12 @@ Accounts created before workspaces existed shared an 8-digit team code. Each cod
 cd apps/api && npm run build && npm run migrate:workspaces
 ```
 
+### Live editing and webhooks
+
+Live editing runs over the existing Socket.IO connection (no extra service). Each edit is stored in `docupdates` and folded into the doc every 200 edits; the doc's plain text, search and AI index update about two seconds after typing stops. With several API processes, turn on `REALTIME_REDIS` so edits reach people connected to other processes.
+
+Webhook deliveries run in the worker with up to 5 retries. Requests are signed with the hook's secret: `X-ProjectTeams-Signature: t=<unix time>,v1=<hex HMAC-SHA256 of "<t>.<raw body>">`. Webhook URLs must be `https` and may not point at private or local addresses (checked after DNS); `WEBHOOKS_ALLOW_PRIVATE=true` lifts that for local testing only.
+
 ### Upgrading docs
 
 Docs written in the old plain-text editor are converted to rich text the first time they're opened, old embedded versions move into the new history, and the old team-wide star becomes a personal star for the doc's author. Nothing to run.
@@ -124,4 +133,4 @@ See [`deploy/nginx.conf.example`](deploy/nginx.conf.example) and [`apps/api/ecos
 4. ✅ Chat v2: channels, threads, unread counts, real presence, notifications
 5. ✅ Docs v2 + Knowledge: rich-text editor, one searchable knowledge base, cited answers
 6. ✅ Business: audit log, export, delete workspace, pricing on the landing page (billing later)
-7. Collaboration: live co-editing, comments, integrations
+7. ✅ Collaboration: live co-editing, comments, webhooks

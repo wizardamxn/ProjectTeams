@@ -17,6 +17,13 @@ export interface IDocument {
   author: { name: string; avatar?: string };
   /** Who has starred it (stars are personal). */
   starredBy: Types.ObjectId[];
+  /**
+   * Live-editing state (a compacted Yjs update). Once set, it is the source of
+   * truth for the body; contentJson/content are derived from it by the server.
+   */
+  ystate?: Buffer;
+  /** The newest DocUpdate already folded into `ystate`. */
+  ycompactedUntil?: Types.ObjectId;
   /** LEGACY: pre-Phase-5 team-wide star. Migrated into starredBy on first read. */
   starred?: boolean;
   /** LEGACY: pre-Phase-5 embedded history. Moved into DocumentVersion on first read. */
@@ -44,6 +51,8 @@ const documentSchema = new Schema<IDocument>(
     },
     starredBy: [{ type: Schema.Types.ObjectId }],
     starred: { type: Boolean },
+    ystate: { type: Buffer, select: false },
+    ycompactedUntil: { type: Schema.Types.ObjectId, select: false },
     versions: [{ content: String, updatedAt: { type: Date, default: Date.now } }],
   },
   { timestamps: true, minimize: false },

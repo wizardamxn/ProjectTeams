@@ -11,6 +11,7 @@ import { emitToUsers } from "../../realtime/emitter.js";
 import { enqueueChatIndex } from "../../queues/ragQueue.js";
 import type { WorkspaceContext } from "../workspaces/workspaces.service.js";
 import { conversationsService } from "./conversations.service.js";
+import { webhooks } from "../webhooks/webhooks.service.js";
 
 export const MAX_TEXT = 4000;
 export const MAX_ATTACHMENTS = 5;
@@ -217,6 +218,14 @@ export const messagesService = {
     const [presented] = await presentMessages([message]);
     emitToUsers(memberIds, "message:new", { conversationId: conversation._id.toString(), message: presented });
     queueIndex(conversation);
+    // Integrations only ever see public channels.
+    if (conversation.type === "channel" && !conversation.isPrivate) {
+      webhooks.dispatch(ctx.workspace._id, "message.created", {
+        channel: { id: conversation._id.toString(), name: conversation.name },
+        message: { id: message._id.toString(), text: message.text, threadRootId: message.threadRootId?.toString() ?? null, attachments: message.attachments.map((a) => a.fileName) },
+        author: { id: ctx.user._id.toString(), name: ctx.user.fullName },
+      });
+    }
 
     if (root) {
       const updatedRoot = await Message.findById(root._id);
