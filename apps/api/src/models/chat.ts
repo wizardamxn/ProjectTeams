@@ -12,6 +12,7 @@ export interface IMessage {
 export interface IChat {
   _id: Types.ObjectId;
   participants: Types.ObjectId[];
+  pairKey?: string;
   // Still embedded; Phase 4 moves messages to their own paginated collection.
   messages: Types.DocumentArray<IMessage>;
   createdAt: Date;
@@ -32,6 +33,9 @@ const messageSchema = new Schema<IMessage>(
 const chatSchema = new Schema<IChat>(
   {
     participants: [{ type: Schema.Types.ObjectId, ref: "User", required: true }],
+    // "<idA>:<idB>" sorted; unique so two users opening their chat at once get one chat.
+    // Sparse because chats created before this field have none.
+    pairKey: { type: String, unique: true, sparse: true },
     messages: [messageSchema],
   },
   { timestamps: true },

@@ -63,6 +63,16 @@ describe("chat history route", () => {
     expect(res.body.participants.sort()).toEqual([alice.id, bob.id].sort());
   });
 
+  it("both teammates opening the chat at once get the same chat", async () => {
+    const alice = await signUp(app, { teamCode: TEAM_A });
+    const bob = await signUp(app, { teamCode: TEAM_A });
+    const [a, b] = await Promise.all([
+      alice.agent.get(`/api/chat/with/${bob.id}`).expect(200),
+      bob.agent.get(`/api/chat/with/${alice.id}`).expect(200),
+    ]);
+    expect(a.body._id).toBe(b.body._id);
+  });
+
   it("404s for someone outside the team, or yourself", async () => {
     const alice = await signUp(app, { teamCode: TEAM_A });
     const mallory = await signUp(app, { teamCode: TEAM_B });

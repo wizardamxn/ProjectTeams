@@ -8,10 +8,15 @@ export const MAX_MESSAGE_LENGTH = 4000;
 
 const findOrCreate = async (a: Types.ObjectId, b: Types.ObjectId) => {
   const participants = [a, b].sort((x, y) => x.toString().localeCompare(y.toString()));
-  return (
-    (await Chat.findOne({ participants: { $all: participants, $size: 2 } })) ??
-    (await Chat.create({ participants }))
-  );
+  const pairKey = participants.join(":");
+  const existing = await Chat.findOne({ participants: { $all: participants, $size: 2 } });
+  if (existing) return existing;
+  // Atomic upsert on the unique pairKey: concurrent callers end up with the same chat.
+  return Chat.findOneAndUpdate(
+    { pairKey },
+    { $setOnInsert: { participants, pairKey } },
+    { upsert: true, new: true },
+  ).orFail();
 };
 
 export const chatService = {

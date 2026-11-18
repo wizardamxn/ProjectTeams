@@ -7,7 +7,7 @@ services:
       - "6379:6379"
 
   api:
-    image: node:20-alpine
+    image: node:22-alpine
     working_dir: /app
     command: sh -c "npm ci && npm run dev"
     ports:
@@ -23,7 +23,7 @@ services:
       - redis
 
   worker:
-    image: node:20-alpine
+    image: node:22-alpine
     working_dir: /app
     command: sh -c "npm ci && npm run worker:dev"
     env_file:
@@ -38,7 +38,7 @@ services:
       - api
 
   web:
-    image: node:20-alpine
+    image: node:22-alpine
     working_dir: /app
     command: sh -c "npm ci && npm run dev -- --host"
     ports:
