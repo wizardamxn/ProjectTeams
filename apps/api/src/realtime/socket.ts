@@ -8,6 +8,7 @@ import { AUTH_COOKIE, getUserFromToken } from "../middleware/auth.js";
 import type { UserDoc } from "../models/user.js";
 import { chatService } from "../modules/chat/chat.service.js";
 import { usersService } from "../modules/users/users.service.js";
+import { workspacesService } from "../modules/workspaces/workspaces.service.js";
 import { presence } from "./presence.js";
 
 interface SocketData {
@@ -55,10 +56,18 @@ export const initializeSocket = (server: HttpServer) => {
     const userId = user._id.toString();
     presence.add(userId, socket.id);
 
+    // Membership is re-checked on every event, so removing someone from a
+    // workspace takes effect immediately, even on an open socket.
+    const context = async () => {
+      const ctx = await workspacesService.resolveActive(user);
+      if (!ctx) throw new AppError(409, "Create or join a workspace first", "no_workspace");
+      return ctx;
+    };
+
     socket.on("joinChat", async (payload) => {
       const targetUserId = payload?.targetUserId;
       try {
-        const chat = await chatService.openWith(user, targetUserId);
+        const chat = await chatService.openWith(await context(), targetUserId);
         const room = chat._id.toString();
         // One open conversation per socket: leave the previous one.
         if (socket.data.chatRoom && socket.data.chatRoom !== room) socket.leave(socket.data.chatRoom);
@@ -71,13 +80,15 @@ export const initializeSocket = (server: HttpServer) => {
 
     socket.on("checkOnlineStatus", async (payload, callback) => {
       if (typeof callback !== "function") return;
-      const teammate = await usersService.findTeammate(user, payload?.targetUserId).catch(() => null);
+      const teammate = await context()
+        .then((ctx) => usersService.findTeammate(ctx, payload?.targetUserId))
+        .catch(() => null);
       callback(teammate ? presence.isOnline(teammate._id.toString()) : false);
     });
 
     socket.on("sendMessage", async (payload) => {
       try {
-        const event = await chatService.send(user, payload?.targetUserId, payload?.text);
+        const event = await chatService.send(await context(), payload?.targetUserId, payload?.text);
         io.to(event.chatId).emit("messageReceived", event);
       } catch (err) {
         if (!(err instanceof AppError)) logger.error({ err, userId }, "sendMessage failed");

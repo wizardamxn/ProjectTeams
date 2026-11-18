@@ -10,9 +10,13 @@ export interface IUser {
   _id: Types.ObjectId;
   fullName: string;
   email: string;
-  /** Always a bcrypt hash; strength is checked on the plain text before hashing. */
-  password: string;
-  teamCode: string;
+  /** bcrypt hash; absent for accounts that only sign in with Google. */
+  password?: string;
+  /** Legacy shared team code (pre-workspaces). Migrated on first use; unused after that. */
+  teamCode?: string;
+  activeWorkspaceId?: Types.ObjectId;
+  googleId?: string;
+  avatarUrl?: string;
   passwordChangedAt?: Date;
   resetTokenHash?: string;
   resetTokenExpires?: Date;
@@ -39,8 +43,11 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       trim: true,
       validate: { validator: (v: string) => validator.isEmail(v), message: "Invalid email address" },
     },
-    password: { type: String, required: true },
-    teamCode: { type: String, required: true, minLength: 8, maxLength: 8, index: true },
+    password: { type: String },
+    teamCode: { type: String, minLength: 8, maxLength: 8, index: true },
+    activeWorkspaceId: { type: Schema.Types.ObjectId, ref: "Workspace" },
+    googleId: { type: String, unique: true, sparse: true },
+    avatarUrl: { type: String },
     passwordChangedAt: { type: Date },
     resetTokenHash: { type: String, select: false },
     resetTokenExpires: { type: Date, select: false },
@@ -52,7 +59,8 @@ userSchema.methods.getJwtToken = function () {
   return jwt.sign({ _id: this._id.toString() }, config.JWT_KEY, { expiresIn: JWT_TTL_SECONDS });
 };
 
-userSchema.methods.isPasswordCorrect = function (password: string) {
+userSchema.methods.isPasswordCorrect = async function (password: string) {
+  if (!this.password) return false; // Google-only account
   return bcrypt.compare(password, this.password);
 };
 
@@ -60,9 +68,11 @@ userSchema.methods.isPasswordCorrect = function (password: string) {
 userSchema.set("toJSON", {
   transform: (_doc, ret) => {
     const out = ret as unknown as Record<string, unknown>;
+    out.hasPassword = Boolean(out.password);
     delete out.password;
     delete out.resetTokenHash;
     delete out.resetTokenExpires;
+    delete out.googleId;
     delete out.__v;
     return out;
   },

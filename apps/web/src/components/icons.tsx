@@ -8,6 +8,16 @@
 import { forwardRef } from "react";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
+  ArrowDown01Icon,
+  Link01Icon,
+  Sun01Icon,
+  Moon02Icon,
+  Building03Icon,
+  CrownIcon,
+  GoogleIcon,
+  Settings01Icon,
+  Door01Icon,
+  UserRemove01Icon,
   AlertCircleIcon,
   TextAlignLeft01Icon,
   ArrowLeft01Icon,
@@ -133,3 +143,13 @@ export const Wand2 = make(MagicWand01Icon, "Wand2");
 export const X = make(Cancel01Icon, "X");
 export const XCircle = make(CancelCircleIcon, "XCircle");
 export const Zap = make(FlashIcon, "Zap");
+export const ChevronDown = make(ArrowDown01Icon, "ChevronDown");
+export const Link = make(Link01Icon, "Link");
+export const Sun = make(Sun01Icon, "Sun");
+export const Moon = make(Moon02Icon, "Moon");
+export const Building = make(Building03Icon, "Building");
+export const Crown = make(CrownIcon, "Crown");
+export const Google = make(GoogleIcon, "Google");
+export const Settings = make(Settings01Icon, "Settings");
+export const DoorExit = make(Door01Icon, "DoorExit");
+export const UserRemove = make(UserRemove01Icon, "UserRemove");

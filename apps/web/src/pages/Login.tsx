@@ -6,6 +6,8 @@ import { useAppSelector } from "@/store/hooks";
 import { useLogin } from "@/api/auth";
 import { errorMessage } from "@/lib/api";
 import AuthShell from "@/components/AuthShell";
+import GoogleButton from "@/components/GoogleButton";
+import { nextPath } from "@/lib/nextPath";
 import { HoverBorderGradient } from "@/components/ace/hover-border-gradient";
 
 export default function Login() {
@@ -16,20 +18,22 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const loading = login.isPending;
-  const [error, setError] = useState(() =>
-    new URLSearchParams(window.location.search).has("expired")
-      ? "Your session expired. Please sign in again."
-      : "",
-  );
+  const next = nextPath();
+  const [error, setError] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("expired")) return "Your session expired. Please sign in again.";
+    if (params.get("error")?.startsWith("google")) return "Google sign-in didn't work. Please try again.";
+    return "";
+  });
 
   const user = useAppSelector((s) => s.user.user);
   const isAuthChecking = useAppSelector((s) => s.user.isAuthChecking);
 
   useEffect(() => {
     if (!isAuthChecking && user) {
-      navigate("/dashboard", { replace: true });
+      navigate(next ?? "/dashboard", { replace: true });
     }
-  }, [user, isAuthChecking, navigate]);
+  }, [user, isAuthChecking, navigate, next]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +51,7 @@ export default function Login() {
     login.mutate(
       { email, password },
       {
-        onSuccess: () => navigate("/dashboard"),
+        onSuccess: () => navigate(next ?? "/dashboard", { replace: true }),
         onError: (err) => setError(errorMessage(err, "Invalid credentials. Please try again.")),
       },
     );
@@ -67,6 +71,7 @@ export default function Login() {
 
       {/* Card */}
       <div className="glass-card p-6 shadow-2xl">
+        <GoogleButton />
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-1.5">
             <label
@@ -167,7 +172,7 @@ export default function Login() {
       <p className="mt-6 text-center text-sm text-zinc-500">
         Don't have an account?{" "}
         <Link
-          to="/signup"
+          to={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}
           className="font-medium text-emerald-400 transition-colors hover:text-emerald-300"
         >
           Sign up

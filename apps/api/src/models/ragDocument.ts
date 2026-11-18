@@ -27,6 +27,7 @@ const ragDocumentSchema = new Schema<IRagDocument>(
     storagePath: { type: String, required: true },
     mimeType: { type: String, required: true },
     fileSize: { type: Number, required: true },
+    // Workspace id as a string. Named teamId because the Atlas vector index filters on it.
     teamId: { type: String, required: true },
     uploadedBy: { type: Schema.Types.ObjectId, required: true },
     ragStatus: { type: String, enum: RAG_STATUSES, default: "uploaded" },

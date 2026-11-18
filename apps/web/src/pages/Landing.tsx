@@ -311,20 +311,18 @@ const PresenceVisual = () => (
 
 const CodeVisual = () => (
   <div className="flex h-full min-h-[7rem] items-center justify-center rounded-lg bg-zinc-950/40 p-3">
-    <div className="flex gap-1.5 font-mono">
-      {"48210".split("").map((d, i) => (
-        <motion.span
-          key={i}
-          initial={{ opacity: 0, y: 8 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: i * 0.08 }}
-          className="flex h-9 w-8 items-center justify-center rounded-md border border-emerald-500/20 bg-emerald-500/[0.06] text-lg font-semibold text-emerald-300"
-        >
-          {d}
-        </motion.span>
-      ))}
-    </div>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2 font-mono text-sm text-emerald-300"
+    >
+      <KeyRound className="h-4 w-4" />
+      /invite/k3Xq…
+      <span className="ml-1 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-sans font-semibold uppercase tracking-wide">
+        Copied
+      </span>
+    </motion.div>
   </div>
 );
 
@@ -332,13 +330,13 @@ const CodeVisual = () => (
 const steps = [
   {
     n: "01",
-    title: "Create your team",
-    body: "Spin up a workspace in seconds. You get a unique team code to share.",
+    title: "Create your workspace",
+    body: "Spin up a workspace in seconds, or sign in with Google.",
   },
   {
     n: "02",
-    title: "Invite with a code",
-    body: "Teammates enter your 8-digit code at signup and land right inside.",
+    title: "Invite with a link",
+    body: "Share an invite link or send one by email. Teammates click and land right inside."
   },
   {
     n: "03",
@@ -488,7 +486,7 @@ export default function Landing() {
                 [FileText, "Docs"],
                 [Database, "AI Knowledge"],
                 [Users, "Presence"],
-                [KeyRound, "Team Codes"],
+                [KeyRound, "Invite Links"],
                 [Zap, "Real-time"],
               ] as const
             ).map(([Icon, label], i) => (
@@ -543,11 +541,11 @@ export default function Landing() {
             header={<DocVisual />}
             icon={<FileText className="h-5 w-5 text-emerald-400" />}
             title="Collaborative documents"
-            description="Co-write with live cursors, auto-save, version history, and one-click AI summaries."
+            description="Write together with auto-save, version history, and one-click AI summaries."
           />
         </BentoGrid>
 
-        {/* wide team-code card */}
+        {/* wide invite card */}
         <div className="mt-4">
           <WobbleCard containerClassName="min-h-[12rem] bg-gradient-to-br from-emerald-600/20 via-zinc-900 to-zinc-900">
             <div className="grid items-center gap-6 md:grid-cols-2">
@@ -559,11 +557,11 @@ export default function Landing() {
                   </span>
                 </div>
                 <h3 className="text-2xl font-bold text-white">
-                  Invite your whole team with one code.
+                  Invite your whole team with one link.
                 </h3>
                 <p className="mt-2 max-w-md text-sm text-zinc-400">
-                  No seat management, no email chains. Share an 8-digit code and
-                  teammates are in.
+                  Share a link or send invites by email, choose who's an admin,
+                  and revoke access any time.
                 </p>
               </div>
               <div className="flex justify-center md:justify-end">

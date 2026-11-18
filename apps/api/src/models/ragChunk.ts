@@ -14,6 +14,7 @@ export interface IRagChunk {
 const ragChunkSchema = new Schema<IRagChunk>(
   {
     documentId: { type: Schema.Types.ObjectId, required: true, index: true },
+    // Workspace id as a string. Named teamId because the Atlas vector index filters on it.
     teamId: { type: String, required: true },
     chunkIndex: { type: Number, required: true },
     text: { type: String, required: true },

@@ -7,7 +7,8 @@ Team chat, shared docs and an AI knowledge base you can ask questions, in one wo
 - **Chat**: 1:1 messages between teammates over Socket.IO.
 - **Docs**: write, tag, star and version team documents, with AI summaries, tags and editing.
 - **Knowledge**: upload PDFs and text files, index them, and ask questions answered only from your team's files (RAG on MongoDB Atlas Vector Search).
-- **Teams**: everyone with the same 8-digit team code shares one workspace (real workspaces and invites arrive in Phase 3).
+- **Workspaces**: create workspaces, invite people by link or email, owner/admin/member roles, switch between workspaces.
+- **Sign-in**: email + password or Google; password reset by email; light and dark themes.
 
 ## Repo layout
 
@@ -23,7 +24,8 @@ apps/
       middleware/       auth, rate limits, validation, error handler
       models/           Mongoose models
       modules/<name>/   routes → service (+ schemas) per feature:
-                        auth, users, docs, chat, ai, knowledge
+                        auth, users, workspaces, invites, docs, chat, ai, knowledge
+      scripts/          one-off jobs (e.g. migrate:workspaces)
       realtime/         Socket.IO handlers + presence
       queues/           BullMQ queue + worker
     test/               Vitest: unit (no DB) + integration (in-memory MongoDB)
@@ -83,6 +85,14 @@ npm run lint --prefix apps/web
 
 CI runs all of these on every push and pull request.
 
+### Upgrading from team codes
+
+Accounts created before workspaces existed shared an 8-digit team code. Each code becomes a workspace called "Team <code>" the first time one of its members signs in. The earliest member becomes the owner and can rename it; docs, files and chats move with it. To convert every team at once instead:
+
+```bash
+cd apps/api && npm run build && npm run migrate:workspaces
+```
+
 ## Deploying
 
 Production is one origin: Nginx serves `apps/web/dist` and proxies `/api` and `/socket.io` to the API on localhost. PM2 runs the API and the worker from compiled output.
@@ -97,7 +107,7 @@ See [`deploy/nginx.conf.example`](deploy/nginx.conf.example) and [`apps/api/ecos
 
 1. ✅ Lockdown: auth on every route and socket, team isolation, safe password reset
 2. ✅ Foundations: TypeScript API in modules, tests, CI, React Query
-3. Workspaces: real teams, invite links, roles, Google sign-in, onboarding
+3. ✅ Workspaces: real workspaces, invite links, roles, Google sign-in, onboarding, light theme
 4. Chat v2: channels, threads, unread counts, real presence, notifications
 5. Docs v2 + Knowledge: rich-text editor, one searchable knowledge base, cited answers
 6. Business: billing, audit log, export

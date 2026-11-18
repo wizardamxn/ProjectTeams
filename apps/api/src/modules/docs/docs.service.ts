@@ -1,44 +1,45 @@
-import { notFound } from "../../lib/errors.js";
+import { forbidden, notFound } from "../../lib/errors.js";
+import { atLeast } from "../../models/membership.js";
 import { Document } from "../../models/document.js";
-import type { UserDoc } from "../../models/user.js";
+import type { WorkspaceContext } from "../workspaces/workspaces.service.js";
 import type { CreateDocInput, UpdateDocInput } from "./docs.schemas.js";
 
-// Every lookup is scoped to the caller's team. A document from another team
-// is indistinguishable from one that doesn't exist.
+// Every lookup is scoped to the active workspace. A document from another
+// workspace is indistinguishable from one that doesn't exist.
 
-const getTeamDoc = async (user: UserDoc, id: string) => {
-  const doc = await Document.findOne({ _id: id, teamId: user.teamCode });
+const getWorkspaceDoc = async (ctx: WorkspaceContext, id: string) => {
+  const doc = await Document.findOne({ _id: id, teamId: ctx.key });
   if (!doc) throw notFound("Document not found");
   return doc;
 };
 
 export const docsService = {
-  create(user: UserDoc, input: CreateDocInput) {
+  create(ctx: WorkspaceContext, input: CreateDocInput) {
     return Document.create({
       ...input,
       starred: input.starred ?? false,
-      createdBy: user._id,
-      teamId: user.teamCode,
-      author: { name: user.fullName },
+      createdBy: ctx.user._id,
+      teamId: ctx.key,
+      author: { name: ctx.user.fullName, avatar: ctx.user.avatarUrl },
     });
   },
 
-  listMine(user: UserDoc) {
-    return Document.find({ createdBy: user._id, teamId: user.teamCode }).sort({ updatedAt: -1 });
+  listMine(ctx: WorkspaceContext) {
+    return Document.find({ createdBy: ctx.user._id, teamId: ctx.key }).sort({ updatedAt: -1 });
   },
 
-  listTeam(user: UserDoc) {
-    return Document.find({ teamId: user.teamCode }).sort({ updatedAt: -1 });
+  listTeam(ctx: WorkspaceContext) {
+    return Document.find({ teamId: ctx.key }).sort({ updatedAt: -1 });
   },
 
-  listStarred(user: UserDoc) {
-    return Document.find({ teamId: user.teamCode, starred: true }).sort({ updatedAt: -1 });
+  listStarred(ctx: WorkspaceContext) {
+    return Document.find({ teamId: ctx.key, starred: true }).sort({ updatedAt: -1 });
   },
 
-  get: getTeamDoc,
+  get: getWorkspaceDoc,
 
-  async update(user: UserDoc, id: string, input: UpdateDocInput) {
-    const doc = await getTeamDoc(user, id);
+  async update(ctx: WorkspaceContext, id: string, input: UpdateDocInput) {
+    const doc = await getWorkspaceDoc(ctx, id);
     if (input.content !== undefined && input.content !== doc.content) {
       doc.versions.push({ content: doc.content, updatedAt: doc.updatedAt });
     }
@@ -46,14 +47,19 @@ export const docsService = {
     return doc.save();
   },
 
-  async toggleStar(user: UserDoc, id: string) {
-    const doc = await getTeamDoc(user, id);
+  async toggleStar(ctx: WorkspaceContext, id: string) {
+    const doc = await getWorkspaceDoc(ctx, id);
     doc.starred = !doc.starred;
     return doc.save();
   },
 
-  async remove(user: UserDoc, id: string) {
-    const doc = await getTeamDoc(user, id);
+  /** Authors delete their own docs; admins and the owner can delete any. */
+  async remove(ctx: WorkspaceContext, id: string) {
+    const doc = await getWorkspaceDoc(ctx, id);
+    const isAuthor = doc.createdBy.equals(ctx.user._id);
+    if (!isAuthor && !atLeast(ctx.membership.role, "admin")) {
+      throw forbidden("Only the author or a workspace admin can delete this document");
+    }
     await doc.deleteOne();
   },
 };

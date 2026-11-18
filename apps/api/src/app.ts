@@ -11,7 +11,9 @@ import { authRouter } from "./modules/auth/auth.routes.js";
 import { chatRouter } from "./modules/chat/chat.routes.js";
 import { docsRouter } from "./modules/docs/docs.routes.js";
 import { knowledgeRouter } from "./modules/knowledge/knowledge.routes.js";
-import { usersRouter } from "./modules/users/users.routes.js";
+import { meRouter, usersRouter } from "./modules/users/users.routes.js";
+import { invitesRouter } from "./modules/invites/invites.routes.js";
+import { workspacesRouter } from "./modules/workspaces/workspaces.routes.js";
 
 /** Builds the Express app without listening, so tests can drive it directly. */
 export const createApp = () => {
@@ -35,7 +37,10 @@ export const createApp = () => {
 
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
   app.use("/api/auth", authRouter);
+  app.use("/api/me", meRouter);
   app.use("/api/profile", usersRouter);
+  app.use("/api/workspaces", workspacesRouter);
+  app.use("/api/invites", invitesRouter);
   app.use("/api/doc", docsRouter);
   app.use("/api/chat", chatRouter);
   app.use("/api/ai", aiRouter);

@@ -15,26 +15,26 @@ const createDoc = async (agent: Awaited<ReturnType<typeof signUp>>["agent"], tit
 };
 
 describe("documents", () => {
-  it("creates a doc owned by the caller's team, with clean tags", async () => {
-    const alice = await signUp(app, { teamCode: TEAM_A });
+  it("creates a doc owned by the caller's workspace, with clean tags", async () => {
+    const alice = await signUp(app, { team: TEAM_A });
     const doc = await createDoc(alice.agent);
-    expect(doc.teamId).toBe(TEAM_A);
+    expect(doc.teamId).toBe(alice.workspaceId);
     expect(doc.tags).toEqual(["a", "b"]);
   });
 
   it("ignores ownership fields sent by the client", async () => {
-    const alice = await signUp(app, { teamCode: TEAM_A });
+    const alice = await signUp(app, { team: TEAM_A });
     const res = await alice.agent
       .post("/api/doc/create")
-      .send({ title: "x", content: "y", teamId: TEAM_B, createdBy: "64b0000000000000000000aa" })
+      .send({ title: "x", content: "y", teamId: "somewhere-else", createdBy: "64b0000000000000000000aa" })
       .expect(201);
-    expect(res.body.document.teamId).toBe(TEAM_A);
+    expect(res.body.document.teamId).toBe(alice.workspaceId);
     expect(res.body.document.createdBy).toBe(alice.id);
   });
 
   it("teammates can see and edit each other's docs", async () => {
-    const alice = await signUp(app, { teamCode: TEAM_A });
-    const bob = await signUp(app, { teamCode: TEAM_A });
+    const alice = await signUp(app, { team: TEAM_A });
+    const bob = await signUp(app, { team: TEAM_A });
     const doc = await createDoc(alice.agent);
 
     await bob.agent.get(`/api/doc/doc/${doc._id}`).expect(200);
@@ -47,8 +47,8 @@ describe("documents", () => {
   });
 
   it("another team cannot read, edit, star or delete the doc", async () => {
-    const alice = await signUp(app, { teamCode: TEAM_A });
-    const mallory = await signUp(app, { teamCode: TEAM_B });
+    const alice = await signUp(app, { team: TEAM_A });
+    const mallory = await signUp(app, { team: TEAM_B });
     const doc = await createDoc(alice.agent);
 
     await mallory.agent.get(`/api/doc/doc/${doc._id}`).expect(404);
@@ -64,10 +64,10 @@ describe("documents", () => {
   });
 
   it("edit cannot move a doc to another team", async () => {
-    const alice = await signUp(app, { teamCode: TEAM_A });
+    const alice = await signUp(app, { team: TEAM_A });
     const doc = await createDoc(alice.agent);
-    const res = await alice.agent.put(`/api/doc/edit/${doc._id}`).send({ teamId: TEAM_B, title: "t2" }).expect(200);
-    expect(res.body.teamId).toBe(TEAM_A);
+    const res = await alice.agent.put(`/api/doc/edit/${doc._id}`).send({ teamId: "somewhere-else", title: "t2" }).expect(200);
+    expect(res.body.teamId).toBe(alice.workspaceId);
     expect(res.body.title).toBe("t2");
   });
 
@@ -82,6 +82,18 @@ describe("documents", () => {
     await alice.agent.put(`/api/doc/star/${doc._id}`).expect(200);
     const starred = await alice.agent.get("/api/doc/starred").expect(200);
     expect(starred.body.map((d: { _id: string }) => d._id)).toEqual([doc._id]);
+  });
+
+  it("only the author or an admin can delete a doc", async () => {
+    const owner = await signUp(app, { team: TEAM_A });
+    const bob = await signUp(app, { team: TEAM_A });
+    const carol = await signUp(app, { team: TEAM_A });
+    const bobsDoc = await createDoc(bob.agent, "Bob's");
+    const carolsDoc = await createDoc(carol.agent, "Carol's");
+
+    await carol.agent.delete(`/api/doc/teamdocs/${bobsDoc._id}`).expect(403);
+    await bob.agent.delete(`/api/doc/teamdocs/${bobsDoc._id}`).expect(200); // author
+    await owner.agent.delete(`/api/doc/teamdocs/${carolsDoc._id}`).expect(200); // owner
   });
 
   it("rejects missing title/content", async () => {

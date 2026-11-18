@@ -27,7 +27,9 @@ import ProfilePage from "./pages/Profile";
 import Create from "./pages/Create";
 import RAGDocs from "./pages/RAGDocs";
 import RAGDocDetail from "./pages/RAGDocDetail";
-import ProtectedRoute from "./components/ProtectedRoute";
+import ProtectedRoute, { RequireWorkspace } from "./components/ProtectedRoute";
+import Onboarding from "./pages/Onboarding";
+import InvitePage from "./pages/Invite";
 
 const router = createBrowserRouter([
   // --- Public Routes (No Sidebar/Navbar) ---
@@ -36,30 +38,34 @@ const router = createBrowserRouter([
   { path: "/signup", element: <Signup /> },
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
+  { path: "/invite/:token", element: <InvitePage /> },
 
-  // --- Private Routes (Wrapped in Layout) ---
+  // --- Private routes ---
   {
     element: <ProtectedRoute />,
     children: [
+      // Logged in, but not in a workspace yet
+      { path: "/onboarding", element: <Onboarding /> },
       {
-        element: <Layout />, // This keeps Sidebar/Navbar persistent
+        element: <RequireWorkspace />,
         children: [
-          { path: "/dashboard", element: <Dashboard /> },
-          { path: "/documents", element: <Documents /> },
-          { path: "/team", element: <Team /> },
-          { path: "/profile", element: <ProfilePage /> },
-          { path: "/rag-docs", element: <RAGDocs /> },
-          { path: "/rag-docs/:id", element: <RAGDocDetail /> },
-
-          // Editor & Create (Wrapped so they get the sidebar too)
-          { path: "/create", element: <Create /> },
-          { path: "/editor/:doc_id", element: <Editor /> },
-
-          // Chat Layout (Nested inside Main Layout)
           {
-            path: "/chat",
-            element: <Chat />,
-            children: [{ path: ":userId", element: <ChatMember /> }],
+            element: <Layout />, // keeps the sidebar persistent
+            children: [
+              { path: "/dashboard", element: <Dashboard /> },
+              { path: "/documents", element: <Documents /> },
+              { path: "/team", element: <Team /> },
+              { path: "/profile", element: <ProfilePage /> },
+              { path: "/rag-docs", element: <RAGDocs /> },
+              { path: "/rag-docs/:id", element: <RAGDocDetail /> },
+              { path: "/create", element: <Create /> },
+              { path: "/editor/:doc_id", element: <Editor /> },
+              {
+                path: "/chat",
+                element: <Chat />,
+                children: [{ path: ":userId", element: <ChatMember /> }],
+              },
+            ],
           },
         ],
       },
@@ -72,23 +78,24 @@ const router = createBrowserRouter([
 
 const App = () => {
   const dispatch = useAppDispatch();
-  const user = useAppSelector((s) => s.user.user);
+  const userId = useAppSelector((s) => s.user.user?._id);
   const isAuthChecking = useAppSelector((s) => s.user.isAuthChecking);
+  const workspaceId = useAppSelector((s) => s.user.workspace?._id);
 
   useEffect(() => {
     dispatch(checkAuth());
   }, [dispatch]);
 
   useEffect(() => {
-    // The socket authenticates with the session cookie, so it only connects
-    // once there is a logged-in user, and drops when they log out.
-    if (user) {
+    // The socket authenticates with the session cookie and works in the
+    // active workspace, so it reconnects whenever either changes.
+    if (userId && workspaceId) {
       listenToMessages(dispatch);
-      if (!socket.connected) socket.connect();
-    } else if (socket.connected) {
+      socket.disconnect().connect();
+    } else {
       socket.disconnect();
     }
-  }, [user, dispatch]);
+  }, [userId, workspaceId, dispatch]);
 
   if (isAuthChecking) {
     return (

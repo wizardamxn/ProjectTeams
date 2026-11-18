@@ -26,6 +26,11 @@ export const keys = {
     detail: (id: string) => [...keys.docs.all, "detail", id] as const,
   },
   team: { members: ["team", "members"] as const },
+  workspace: {
+    members: ["workspace", "members"] as const,
+    invites: ["workspace", "invites"] as const,
+    invite: (token: string) => ["invite", token] as const,
+  },
   chat: { with: (userId: string) => ["chat", userId] as const },
   knowledge: {
     all: ["knowledge"] as const,

@@ -11,6 +11,8 @@ import {
   resetPasswordSchema,
 } from "./auth.schemas.js";
 import { authService } from "./auth.service.js";
+import { googleEnabled, readOAuthState, safeNextPath, signInWithGoogle, startGoogleSignIn } from "./google.js";
+import { logger } from "../../lib/logger.js";
 
 export const authRouter = Router();
 
@@ -41,6 +43,38 @@ authRouter.post("/forgot-password", validateBody(forgotPasswordSchema), async (r
 authRouter.post("/reset-password", validateBody(resetPasswordSchema), async (req, res) => {
   await authService.resetPassword(req.body);
   res.json({ message: "Password reset successfully" });
+});
+
+/* ---- Google ---- */
+
+const OAUTH_COOKIE = "oauth_state";
+const appUrl = (path: string) => `${config.APP_URL.replace(/\/$/, "")}${path}`;
+
+authRouter.get("/providers", (_req, res) => {
+  res.json({ google: googleEnabled() });
+});
+
+authRouter.get("/google", (req, res) => {
+  if (!googleEnabled()) return res.redirect(appUrl("/login?error=google_disabled"));
+  const invite = typeof req.query.invite === "string" && /^[\w-]{16,64}$/.test(req.query.invite) ? req.query.invite : undefined;
+  const { url, cookie, maxAgeMs } = startGoogleSignIn({ invite, next: safeNextPath(req.query.next) });
+  res.cookie(OAUTH_COOKIE, cookie, { ...baseCookie, maxAge: maxAgeMs });
+  res.redirect(url);
+});
+
+authRouter.get("/google/callback", async (req, res) => {
+  res.clearCookie(OAUTH_COOKIE, baseCookie);
+  try {
+    if (typeof req.query.code !== "string") throw new Error(String(req.query.error ?? "missing code"));
+    const state = readOAuthState(req.cookies?.[OAUTH_COOKIE], req.query.state);
+    const user = await signInWithGoogle(req.query.code);
+    res.cookie(AUTH_COOKIE, user.getJwtToken(), sessionCookie);
+    // The invite page accepts automatically once the user is signed in.
+    res.redirect(appUrl(state.invite ? `/invite/${state.invite}?accept=1` : (state.next ?? "/dashboard")));
+  } catch (err) {
+    logger.warn({ err }, "Google sign-in failed");
+    res.redirect(appUrl("/login?error=google"));
+  }
 });
 
 authRouter.post("/logout", (_req, res) => {

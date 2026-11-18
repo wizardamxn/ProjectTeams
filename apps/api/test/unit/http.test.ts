@@ -27,6 +27,12 @@ describe("unauthenticated access is rejected", () => {
     ["post", "/api/ai/ask-docs"],
     ["get", "/api/upload/documents"],
     ["post", "/api/upload/document"],
+    ["get", "/api/me"],
+    ["get", "/api/workspaces"],
+    ["post", "/api/workspaces"],
+    ["get", "/api/workspaces/current/members"],
+    ["post", "/api/workspaces/current/invites"],
+    ["post", "/api/invites/abcdefghijklmnopqrstuvwxyz012345/accept"],
   ] as const)("%s %s -> 401", async (method, path) => {
     const res = await request(app)[method](path).send({});
     expect(res.status).toBe(401);
@@ -43,16 +49,20 @@ describe("input validation happens before any work", () => {
   it("register rejects a weak password", async () => {
     const res = await request(app)
       .post("/api/auth/register")
-      .send({ fullName: "Al", email: "al@example.com", password: "short", teamCode: "12345678" });
+      .send({ fullName: "Al", email: "al@example.com", password: "short" });
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(/8 characters/);
   });
 
-  it("register rejects a malformed team code", async () => {
+  it("register rejects a malformed email", async () => {
     const res = await request(app)
       .post("/api/auth/register")
-      .send({ fullName: "Al", email: "al@example.com", password: "password123", teamCode: "abc" });
+      .send({ fullName: "Al", email: "not-an-email", password: "password123" });
     expect(res.status).toBe(400);
+  });
+
+  it("invite preview rejects a malformed token without a lookup", async () => {
+    await request(app).get("/api/invites/x").expect(404);
   });
 
   it("reset-password rejects a malformed token", async () => {
@@ -68,6 +78,20 @@ describe("input validation happens before any work", () => {
       .set("Content-Type", "application/json")
       .send("{bad json")
       .expect(400);
+  });
+});
+
+describe("google sign-in", () => {
+  it("reports it is off when not configured", async () => {
+    await request(app).get("/api/auth/providers").expect(200, { google: false });
+  });
+  it("sends people back to login when it is off", async () => {
+    const res = await request(app).get("/api/auth/google").expect(302);
+    expect(res.headers.location).toMatch(/\/login\?error=google_disabled$/);
+  });
+  it("rejects a callback without a matching state cookie", async () => {
+    const res = await request(app).get("/api/auth/google/callback?code=abc&state=xyz").expect(302);
+    expect(res.headers.location).toMatch(/\/login\?error=google$/);
   });
 });
 

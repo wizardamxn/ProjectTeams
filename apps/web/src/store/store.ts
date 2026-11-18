@@ -1,7 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
-import userReducer, { logout } from "@/store/slices/User";
+import userReducer, { checkAuth, logout } from "@/store/slices/User";
 import chatReducer from "@/store/slices/SocketThunks";
-import { setSessionExpiredHandler } from "@/lib/api";
+import { setSessionHandlers } from "@/lib/api";
 import { queryClient } from "@/api/queryClient";
 
 export const store = configureStore({
@@ -14,10 +14,18 @@ export const store = configureStore({
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 
-// Session expired or revoked mid-use: drop the user and go back to login, once.
-setSessionExpiredHandler(() => {
-  if (!store.getState().user.user) return;
-  store.dispatch(logout());
-  queryClient.clear();
-  if (window.location.pathname !== "/login") window.location.assign("/login?expired=1");
+setSessionHandlers({
+  // Session expired or revoked mid-use: drop the user and go back to login, once.
+  onExpired: () => {
+    if (!store.getState().user.user) return;
+    store.dispatch(logout());
+    queryClient.clear();
+    if (window.location.pathname !== "/login") window.location.assign("/login?expired=1");
+  },
+  // Removed from the workspace: reload the session; routing then picks another
+  // workspace or sends the user to onboarding.
+  onNoWorkspace: () => {
+    queryClient.clear();
+    void store.dispatch(checkAuth());
+  },
 });

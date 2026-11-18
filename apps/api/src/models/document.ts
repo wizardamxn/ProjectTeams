@@ -25,6 +25,7 @@ const documentSchema = new Schema<IDocument>(
     summary: { type: String },
     tags: [{ type: String }],
     createdBy: { type: Schema.Types.ObjectId, required: true, index: true },
+    // Workspace id as a string. Named teamId because the Atlas vector index filters on it.
     teamId: { type: String, required: true },
     author: {
       type: new Schema({ name: { type: String, required: true }, avatar: String }, { _id: false }),

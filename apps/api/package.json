@@ -10,7 +10,8 @@
     "worker": "node dist/worker.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "migrate:workspaces": "node dist/scripts/migrateWorkspaces.js"
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.18",

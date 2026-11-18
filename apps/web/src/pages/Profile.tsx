@@ -4,23 +4,23 @@ import {
   Mail,
   Calendar,
   Loader2,
-  Hash,
-  Copy,
-  Check,
+  Building,
   Star,
   ChevronRight,
 } from "@/components/icons";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAppSelector } from "@/store/hooks";
 import { useMyDocs } from "@/api/docs";
+import { ThemePicker } from "@/components/ThemeToggle";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
   const profile = useAppSelector((s) => s.user.user);
+  const workspace = useAppSelector((s) => s.user.workspace);
+  const role = useAppSelector((s) => s.user.role);
   const { data: documents = [], isLoading: loading, error } = useMyDocs();
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (error) toast.error("Could not load your documents");
@@ -33,18 +33,6 @@ export default function ProfilePage() {
       year: "numeric",
     });
 
-  const copyCode = async () => {
-    if (!profile?.teamCode) return;
-    try {
-      await navigator.clipboard.writeText(profile.teamCode);
-      setCopied(true);
-      toast.success("Team code copied");
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Failed to copy");
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -55,26 +43,9 @@ export default function ProfilePage() {
 
   const stats = [
     {
-      label: "Team code",
-      value: profile?.teamCode,
-      icon: Hash,
-      mono: true,
-      action: (
-        <button
-          onClick={copyCode}
-          className="ml-auto flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-zinc-400 transition-colors hover:text-white"
-        >
-          {copied ? (
-            <>
-              <Check className="h-3 w-3 text-emerald-400" /> Copied
-            </>
-          ) : (
-            <>
-              <Copy className="h-3 w-3" /> Copy
-            </>
-          )}
-        </button>
-      ),
+      label: "Workspace",
+      value: workspace ? `${workspace.name} · ${role ?? "member"}` : "—",
+      icon: Building,
     },
     {
       label: "Member since",
@@ -125,17 +96,19 @@ export default function ProfilePage() {
               {s.label}
             </div>
             <div className="flex items-center">
-              <span
-                className={`text-lg font-semibold text-zinc-100 ${
-                  s.mono ? "font-mono tracking-widest" : ""
-                }`}
-              >
-                {s.value}
-              </span>
-              {s.action}
+              <span className="truncate text-lg font-semibold text-zinc-100">{s.value}</span>
             </div>
           </motion.div>
         ))}
+      </div>
+
+      {/* --- Appearance --- */}
+      <div className="mt-4 flex items-center justify-between rounded-xl border border-white/[0.08] bg-zinc-900/40 p-4">
+        <div>
+          <p className="text-sm font-medium text-zinc-100">Appearance</p>
+          <p className="text-xs text-zinc-500">Light, dark, or match your device.</p>
+        </div>
+        <ThemePicker />
       </div>
 
       {/* --- Documents --- */}

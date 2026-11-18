@@ -38,6 +38,13 @@ const schema = z.object({
   // Empty string = use the system resolver.
   DNS_SERVERS: csv("8.8.8.8,1.1.1.1"),
 
+  // Google sign-in. Both set = the "Continue with Google" button appears.
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  // Must match an authorised redirect URI in Google Cloud. Defaults to
+  // APP_URL + /api/auth/google/callback (right for the same-origin deployment).
+  GOOGLE_REDIRECT_URI: z.string().url().optional(),
+
   RESEND_API_KEY: z.string().optional(),
   MAIL_FROM: z.string().default("Project Teams <no-reply@localhost>"),
 

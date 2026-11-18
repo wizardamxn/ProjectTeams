@@ -24,7 +24,7 @@ describe("register + login", () => {
   it("registers, sets an httpOnly session cookie, and never returns the hash", async () => {
     const res = await request(app)
       .post("/api/auth/register")
-      .send({ fullName: "Ada Lovelace", email: "ADA@Example.com", password: "password123", teamCode: "12345678" })
+      .send({ fullName: "Ada Lovelace", email: "ADA@Example.com", password: "password123" })
       .expect(201);
     const cookie = String(res.headers["set-cookie"]);
     expect(cookie).toMatch(/token=/);
@@ -48,7 +48,7 @@ describe("register + login", () => {
     const { email } = await signUp(app);
     await request(app)
       .post("/api/auth/register")
-      .send({ fullName: "Copy Cat", email, password: "password123", teamCode: "12345678" })
+      .send({ fullName: "Copy Cat", email, password: "password123" })
       .expect(409);
   });
 

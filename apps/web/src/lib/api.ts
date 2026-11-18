@@ -8,21 +8,28 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-type SessionExpiredHandler = () => void;
-let onSessionExpired: SessionExpiredHandler | null = null;
+interface SessionHandlers {
+  /** Session expired or was revoked (401). */
+  onExpired: () => void;
+  /** You're no longer in the active workspace, e.g. you were removed (409 no_workspace). */
+  onNoWorkspace: () => void;
+}
+let handlers: SessionHandlers | null = null;
 
 /** Registered once by the store so this module doesn't import it (no cycles). */
-export const setSessionExpiredHandler = (handler: SessionExpiredHandler) => {
-  onSessionExpired = handler;
+export const setSessionHandlers = (h: SessionHandlers) => {
+  handlers = h;
 };
 
 api.interceptors.response.use(
   (res) => res,
-  (error: AxiosError) => {
+  (error: AxiosError<{ code?: string }>) => {
     const url = error.config?.url ?? "";
-    // Auth calls and the initial session check are allowed to 401 quietly.
-    const quiet = url.startsWith("/auth/") || url === "/profile/profile";
-    if (error.response?.status === 401 && !quiet) onSessionExpired?.();
+    const status = error.response?.status;
+    // Auth calls and the session check itself are allowed to 401 quietly.
+    const quiet = url.startsWith("/auth/") || url === "/me";
+    if (status === 401 && !quiet) handlers?.onExpired();
+    if (status === 409 && error.response?.data?.code === "no_workspace") handlers?.onNoWorkspace();
     return Promise.reject(error);
   },
 );

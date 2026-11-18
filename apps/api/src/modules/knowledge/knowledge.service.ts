@@ -5,7 +5,7 @@ import { logger } from "../../lib/logger.js";
 import { storage } from "../../lib/storage.js";
 import { RagChunk } from "../../models/ragChunk.js";
 import { RagDocument, type RagDocumentDoc } from "../../models/ragDocument.js";
-import type { UserDoc } from "../../models/user.js";
+import type { WorkspaceContext } from "../workspaces/workspaces.service.js";
 import { enqueueIngest } from "../../queues/ragQueue.js";
 import { safeFileName } from "./ingest.js";
 
@@ -27,15 +27,15 @@ const withSignedUrls = async (docs: RagDocumentDoc[]) => {
   return docs.map((d, i) => ({ ...d.toObject(), fileUrl: urls[i] ?? null }));
 };
 
-const getTeamFile = async (user: UserDoc, id: string) => {
-  const doc = await RagDocument.findOne({ _id: id, teamId: user.teamCode });
+const getWorkspaceFile = async (ctx: WorkspaceContext, id: string) => {
+  const doc = await RagDocument.findOne({ _id: id, teamId: ctx.key });
   if (!doc) throw notFound("Document not found");
   return doc;
 };
 
 export const knowledgeService = {
-  async upload(user: UserDoc, file: UploadedFile) {
-    const storagePath = `${user.teamCode}/${Date.now()}-${safeFileName(file.originalname)}`;
+  async upload(ctx: WorkspaceContext, file: UploadedFile) {
+    const storagePath = `${ctx.key}/${Date.now()}-${safeFileName(file.originalname)}`;
     await storage.upload(storagePath, file.buffer, file.mimetype);
 
     const doc = await RagDocument.create({
@@ -44,20 +44,20 @@ export const knowledgeService = {
       storagePath,
       mimeType: file.mimetype,
       fileSize: file.size,
-      teamId: user.teamCode,
-      uploadedBy: user._id,
+      teamId: ctx.key,
+      uploadedBy: ctx.user._id,
     });
     const [signed] = await withSignedUrls([doc]);
     return signed;
   },
 
-  async list(user: UserDoc) {
-    const docs = await RagDocument.find({ teamId: user.teamCode }).sort({ createdAt: -1 });
+  async list(ctx: WorkspaceContext) {
+    const docs = await RagDocument.find({ teamId: ctx.key }).sort({ createdAt: -1 });
     return withSignedUrls(docs);
   },
 
-  async get(user: UserDoc, id: string) {
-    const doc = await getTeamFile(user, id);
+  async get(ctx: WorkspaceContext, id: string) {
+    const doc = await getWorkspaceFile(ctx, id);
     const chunks = await RagChunk.find({ documentId: doc._id })
       .select("chunkIndex text")
       .sort({ chunkIndex: 1 });
@@ -65,8 +65,8 @@ export const knowledgeService = {
     return { document: signed, chunks };
   },
 
-  async startIndexing(user: UserDoc, id: string) {
-    const doc = await getTeamFile(user, id);
+  async startIndexing(ctx: WorkspaceContext, id: string) {
+    const doc = await getWorkspaceFile(ctx, id);
     if (doc.ragStatus === "processing" || doc.ragStatus === "ready") {
       throw conflict(`Document is already ${doc.ragStatus}`);
     }
@@ -87,8 +87,8 @@ export const knowledgeService = {
     return doc;
   },
 
-  async remove(user: UserDoc, id: string) {
-    const doc = await getTeamFile(user, id);
+  async remove(ctx: WorkspaceContext, id: string) {
+    const doc = await getWorkspaceFile(ctx, id);
     await RagChunk.deleteMany({ documentId: doc._id });
     await storage.remove(doc.storagePath).catch((err) =>
       logger.error({ err, path: doc.storagePath }, "Could not remove file from storage"),
@@ -96,7 +96,7 @@ export const knowledgeService = {
     await doc.deleteOne();
   },
 
-  /** Nearest chunks to `question`, restricted to the team inside the vector index. */
+  /** Nearest chunks to `question`, restricted to the workspace inside the vector index. */
   async search(teamId: string, question: string, limit = 5) {
     const [queryVector] = await embed([question]);
     if (!queryVector) return [];

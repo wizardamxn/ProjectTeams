@@ -21,6 +21,8 @@ import {
 } from "@/components/ace/expandable-sidebar";
 import { FloatingDock, type DockItem } from "@/components/ace/floating-dock";
 import CommandPalette from "@/components/CommandPalette";
+import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
@@ -32,20 +34,12 @@ const navItems = [
 
 const openPalette = () => window.dispatchEvent(new Event("open-cmdk"));
 
-/* ---- Brand wordmark: "PT" monogram when collapsed, full name when expanded ---- */
+/* ---- Workspace switcher at the top of the rail (initial only when collapsed) ---- */
 const RailBrand = () => {
   const { open } = useSidebar();
   return (
-    <div className="mb-6 flex h-8 items-center px-2.5">
-      {open ? (
-        <span className="whitespace-nowrap text-[15px] font-bold tracking-tight text-white">
-          Project Teams
-        </span>
-      ) : (
-        <span className="text-[15px] font-bold tracking-tight text-white">
-          PT
-        </span>
-      )}
+    <div className="mb-5">
+      <WorkspaceSwitcher compact={!open} />
     </div>
   );
 };
@@ -99,6 +93,17 @@ const RailFooter = ({
           {name ?? "Profile"}
         </span>
       </button>
+      <ThemeToggle
+        className="mt-1 flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100"
+        label={
+          <span
+            className="overflow-hidden whitespace-nowrap text-sm font-medium"
+            style={{ opacity: open ? 1 : 0, width: open ? "auto" : 0 }}
+          >
+            Theme
+          </span>
+        }
+      />
       <button
         onClick={onLogout}
         className="mt-1 flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-400"
@@ -175,10 +180,16 @@ export default function Layout() {
       <main
         className={
           isChat
-            ? "flex min-h-screen flex-1 flex-col"
+            ? "flex min-h-screen min-w-0 flex-1 flex-col"
             : "flex-1 min-w-0 p-4 pb-28 md:p-8 md:pb-8"
         }
       >
+        {/* Mobile: workspace switcher (the desktop rail has its own) */}
+        {!inConversation && (
+          <div className={`mb-4 max-w-[70%] md:hidden ${isChat ? "px-4 pt-4" : ""}`}>
+            <WorkspaceSwitcher />
+          </div>
+        )}
         <Outlet />
       </main>
 

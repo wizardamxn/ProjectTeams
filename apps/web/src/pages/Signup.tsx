@@ -5,7 +5,6 @@ import {
   Lock,
   User,
   ArrowRight,
-  Hash,
   Eye,
   EyeOff,
   Loader2,
@@ -15,6 +14,8 @@ import { useState } from "react";
 import { useRegister } from "@/api/auth";
 import { errorMessage } from "@/lib/api";
 import AuthShell from "@/components/AuthShell";
+import GoogleButton from "@/components/GoogleButton";
+import { nextPath } from "@/lib/nextPath";
 import { HoverBorderGradient } from "@/components/ace/hover-border-gradient";
 
 export default function Signup() {
@@ -24,34 +25,27 @@ export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [teamCode, setTeamCode] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
   const isLoading = register.isPending;
   const [error, setError] = useState<string | null>(null);
 
   const fullName = name.trim();
-  const isTeamCodeValid = teamCode.length === 8;
+  const next = nextPath();
 
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isTeamCodeValid) return;
     setError(null);
     register.mutate(
-      { fullName, email, password, teamCode },
+      { fullName, email, password },
       {
-        onSuccess: () => navigate("/dashboard"),
+        // New accounts have no workspace yet: onboarding, unless they came from an invite.
+        onSuccess: () => navigate(next ?? "/onboarding"),
         onError: (err) => setError(errorMessage(err, "Failed to create account. Please try again.")),
       },
     );
   };
 
-  const handleTeamCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (/^\d*$/.test(value) && value.length <= 8) {
-      setTeamCode(value);
-    }
-  };
 
   return (
     <AuthShell>
@@ -65,6 +59,7 @@ export default function Signup() {
       </div>
 
       <div className="glass-card p-6 shadow-2xl">
+        <GoogleButton />
         <AnimatePresence>
           {error && (
             <motion.div
@@ -146,36 +141,9 @@ export default function Signup() {
             </p>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-zinc-400">
-              <span>Team Code</span>
-              <span
-                className={`text-[10px] ${
-                  isTeamCodeValid ? "text-emerald-400" : "text-zinc-600"
-                }`}
-              >
-                {teamCode.length}/8 digits
-              </span>
-            </label>
-            <div className="group relative">
-              <Hash className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500 transition-colors group-focus-within:text-emerald-400" />
-              <input
-                type="text"
-                inputMode="numeric"
-                value={teamCode}
-                onChange={handleTeamCodeChange}
-                className="w-full rounded-lg border border-white/10 bg-zinc-950/50 py-2 pl-10 pr-4 font-mono text-sm tracking-widest text-white outline-none transition-all placeholder:text-zinc-600 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50"
-                placeholder="00000000"
-                minLength={8}
-                maxLength={8}
-                required
-              />
-            </div>
-          </div>
-
           <button
             type="submit"
-            disabled={isLoading || !isTeamCodeValid}
+            disabled={isLoading}
             className="w-full disabled:cursor-not-allowed disabled:opacity-60"
           >
             <HoverBorderGradient
@@ -202,7 +170,7 @@ export default function Signup() {
       <p className="mt-6 text-center text-sm text-zinc-500">
         Already have an account?{" "}
         <Link
-          to="/login"
+          to={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
           className="font-medium text-emerald-400 transition-colors hover:text-emerald-300"
         >
           Sign in

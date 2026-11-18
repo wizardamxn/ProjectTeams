@@ -157,7 +157,7 @@ export default function RAGDocDetail() {
                 <iframe
                   src={document.fileUrl ?? undefined}
                   title={document.fileName}
-                  className="flex-1 w-full bg-white"
+                  className="flex-1 w-full bg-[#fff]"
                 />
               </div>
 

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { currentUser, requireAuth } from "../../middleware/auth.js";
+import { requireAuth } from "../../middleware/auth.js";
+import { ctxOf, requireWorkspace } from "../../middleware/workspace.js";
 import { aiLimiter } from "../../middleware/rateLimits.js";
 import { validateBody } from "../../middleware/validate.js";
 import { tooLarge } from "../../lib/errors.js";
@@ -42,6 +43,6 @@ aiRouter.post("/improve-writing", limit("content", MAX_CONTENT_CHARS), validateB
   res.json({ improvedText: await aiService.improveWriting(req.body.content) });
 });
 
-aiRouter.post("/ask-docs", limit("question", MAX_QUESTION_CHARS), validateBody(questionSchema), async (req, res) => {
-  res.json(await aiService.askDocs(currentUser(req).teamCode, req.body.question));
+aiRouter.post("/ask-docs", requireWorkspace, limit("question", MAX_QUESTION_CHARS), validateBody(questionSchema), async (req, res) => {
+  res.json(await aiService.askDocs(ctxOf(req).key, req.body.question));
 });

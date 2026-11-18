@@ -68,7 +68,7 @@ export default function Dashboard() {
     },
     {
       label: "Invite a teammate",
-      desc: "Share your code",
+      desc: "Send an invite link",
       icon: UserPlus,
       onClick: () => navigate("/team"),
     },

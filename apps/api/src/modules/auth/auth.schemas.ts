@@ -28,7 +28,6 @@ export const registerSchema = z.object({
     .max(50, "Name must be at most 50 characters"),
   email,
   password,
-  teamCode: z.string({ required_error: "Team code is required" }).regex(/^\d{8}$/, "Team code must be 8 digits"),
 });
 
 // Bad emails are not rejected here on purpose: forgot-password answers the same

@@ -4,16 +4,59 @@ export interface User {
   _id: string;
   fullName: string;
   email: string;
-  teamCode: string;
+  avatarUrl?: string;
+  /** False for accounts that only sign in with Google. */
+  hasPassword: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface TeamMember {
+export type Role = "owner" | "admin" | "member";
+
+export interface WorkspaceSummary {
+  _id: string;
+  name: string;
+  role: Role;
+}
+
+/** GET /api/me */
+export interface Me {
+  user: User;
+  workspace: { _id: string; name: string } | null;
+  role: Role | null;
+  workspaces: WorkspaceSummary[];
+}
+
+export interface Member {
   _id: string;
   fullName: string;
   email: string;
+  avatarUrl?: string;
+  role: Role;
+  joinedAt: string;
+}
+
+/** A teammate in the chat list (everyone but you). */
+export interface TeamMember extends Member {
   lastMessage: string | null;
+}
+
+export interface Invite {
+  _id: string;
+  url: string;
+  role: "admin" | "member";
+  email: string | null;
+  expiresAt: string;
+  maxUses: number | null;
+  uses: number;
+  createdAt: string;
+}
+
+export interface InvitePreview {
+  workspace: { name: string; memberCount: number };
+  invitedBy: string | null;
+  role: "admin" | "member";
+  emailRestricted: boolean;
 }
 
 export interface Doc {

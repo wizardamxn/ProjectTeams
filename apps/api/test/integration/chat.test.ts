@@ -57,15 +57,15 @@ const settle = () => new Promise((r) => setTimeout(r, 150));
 
 describe("chat history route", () => {
   it("opens a chat with a teammate", async () => {
-    const alice = await signUp(app, { teamCode: TEAM_A });
-    const bob = await signUp(app, { teamCode: TEAM_A });
+    const alice = await signUp(app, { team: TEAM_A });
+    const bob = await signUp(app, { team: TEAM_A });
     const res = await alice.agent.get(`/api/chat/with/${bob.id}`).expect(200);
     expect(res.body.participants.sort()).toEqual([alice.id, bob.id].sort());
   });
 
   it("both teammates opening the chat at once get the same chat", async () => {
-    const alice = await signUp(app, { teamCode: TEAM_A });
-    const bob = await signUp(app, { teamCode: TEAM_A });
+    const alice = await signUp(app, { team: TEAM_A });
+    const bob = await signUp(app, { team: TEAM_A });
     const [a, b] = await Promise.all([
       alice.agent.get(`/api/chat/with/${bob.id}`).expect(200),
       bob.agent.get(`/api/chat/with/${alice.id}`).expect(200),
@@ -74,16 +74,16 @@ describe("chat history route", () => {
   });
 
   it("404s for someone outside the team, or yourself", async () => {
-    const alice = await signUp(app, { teamCode: TEAM_A });
-    const mallory = await signUp(app, { teamCode: TEAM_B });
+    const alice = await signUp(app, { team: TEAM_A });
+    const mallory = await signUp(app, { team: TEAM_B });
     await alice.agent.get(`/api/chat/with/${mallory.id}`).expect(404);
     await alice.agent.get(`/api/chat/with/${alice.id}`).expect(404);
   });
 
   it("a third person cannot read two teammates' chat", async () => {
-    const alice = await signUp(app, { teamCode: TEAM_A });
-    const bob = await signUp(app, { teamCode: TEAM_A });
-    const carol = await signUp(app, { teamCode: TEAM_A });
+    const alice = await signUp(app, { team: TEAM_A });
+    const bob = await signUp(app, { team: TEAM_A });
+    const carol = await signUp(app, { team: TEAM_A });
     await alice.agent.get(`/api/chat/with/${bob.id}`).expect(200);
     // The only chat Carol can open with Bob is her own.
     const res = await carol.agent.get(`/api/chat/with/${bob.id}`).expect(200);
@@ -94,8 +94,8 @@ describe("chat history route", () => {
 
 describe("realtime messaging", () => {
   it("delivers a message with the sender taken from the session", async () => {
-    const alice = await signUp(app, { teamCode: TEAM_A, name: "Alice" });
-    const bob = await signUp(app, { teamCode: TEAM_A, name: "Bob" });
+    const alice = await signUp(app, { team: TEAM_A, name: "Alice" });
+    const bob = await signUp(app, { team: TEAM_A, name: "Bob" });
     const a = await open(alice);
     const b = await open(bob);
 
@@ -116,8 +116,8 @@ describe("realtime messaging", () => {
   });
 
   it("refuses to open or message a chat outside the team", async () => {
-    const alice = await signUp(app, { teamCode: TEAM_A });
-    const mallory = await signUp(app, { teamCode: TEAM_B });
+    const alice = await signUp(app, { team: TEAM_A });
+    const mallory = await signUp(app, { team: TEAM_B });
     const m = await open(mallory);
 
     const err1 = nextEvent<string>(m, "error");
@@ -130,9 +130,9 @@ describe("realtime messaging", () => {
   });
 
   it("switching chats stops messages from the previous one", async () => {
-    const alice = await signUp(app, { teamCode: TEAM_A });
-    const bob = await signUp(app, { teamCode: TEAM_A });
-    const carol = await signUp(app, { teamCode: TEAM_A });
+    const alice = await signUp(app, { team: TEAM_A });
+    const bob = await signUp(app, { team: TEAM_A });
+    const carol = await signUp(app, { team: TEAM_A });
     const a = await open(alice);
     const b = await open(bob);
 
@@ -150,8 +150,8 @@ describe("realtime messaging", () => {
   });
 
   it("rejects empty and oversized messages", async () => {
-    const alice = await signUp(app, { teamCode: TEAM_A });
-    const bob = await signUp(app, { teamCode: TEAM_A });
+    const alice = await signUp(app, { team: TEAM_A });
+    const bob = await signUp(app, { team: TEAM_A });
     const a = await open(alice);
 
     const e1 = nextEvent<string>(a, "error");

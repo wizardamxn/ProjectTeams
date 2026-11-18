@@ -30,14 +30,14 @@ afterAll(stopDb);
 
 describe("knowledge uploads", () => {
   it("uploads a text file, sanitises the key, and returns a signed URL", async () => {
-    const { agent } = await signUp(app, { teamCode: TEAM_A });
+    const { agent, workspaceId } = await signUp(app, { team: TEAM_A });
     const res = await agent
       .post("/api/upload/document")
       .attach("document", Buffer.from("hello world"), { filename: "../../notes (v1).txt", contentType: "text/plain" })
       .expect(201);
 
     const doc = res.body.document;
-    expect(doc.storagePath).toMatch(new RegExp(`^${TEAM_A}/\\d+-notes_v1_.txt$`));
+    expect(doc.storagePath).toMatch(new RegExp(`^${workspaceId}/\\d+-notes_v1_.txt$`));
     expect(doc.fileUrl).toMatch(/^https:\/\/signed\.example\//);
     expect(doc.ragStatus).toBe("uploaded");
   });
@@ -51,8 +51,8 @@ describe("knowledge uploads", () => {
   });
 
   it("other teams can't see, index or delete the file", async () => {
-    const alice = await signUp(app, { teamCode: TEAM_A });
-    const mallory = await signUp(app, { teamCode: TEAM_B });
+    const alice = await signUp(app, { team: TEAM_A });
+    const mallory = await signUp(app, { team: TEAM_B });
     const up = await alice.agent
       .post("/api/upload/document")
       .attach("document", Buffer.from("secret"), { filename: "s.txt", contentType: "text/plain" })

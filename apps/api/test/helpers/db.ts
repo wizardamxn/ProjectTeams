@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
+import { resetTeams } from "./users.js";
 
 let mongod: MongoMemoryServer | undefined;
 
@@ -10,6 +11,7 @@ export const startDb = async () => {
 };
 
 export const clearDb = async () => {
+  resetTeams();
   const collections = await mongoose.connection.db!.collections();
   await Promise.all(collections.map((c) => c.deleteMany({})));
 };
