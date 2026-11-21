@@ -1,0 +1,19 @@
+# Frontend on Netlify; API runs separately at teams-api.amanahmad.xyz.
+# The frontend must stay on a *.amanahmad.xyz domain: the auth cookie is SameSite=Lax,
+# so a *.netlify.app origin would be cross-site and login would fail.
+[build]
+  base = "apps/web"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Process env beats apps/web/.env.production (which is empty = same-origin).
+  VITE_BACKEND_URL = "https://teams-api.amanahmad.xyz"
+  VITE_SOCKET_URL = "https://teams-api.amanahmad.xyz"
+
+# SPA: client-side routes (/dashboard, /docs/...) fall back to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
